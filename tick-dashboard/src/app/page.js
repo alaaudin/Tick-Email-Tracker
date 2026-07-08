@@ -1,409 +1,539 @@
-"use client";
+'use client';
 
-import { useState, useRef } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import {
-    Search,
-    TrendingUp,
-    TrendingDown,
-    Activity,
-    Zap,
-    ArrowUpRight,
-    CheckCircle,
-    Clock,
-    Send,
-    MoreHorizontal,
-} from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
-// --- EXTENDED MOCK DATA (10 Premium Leads) ---
-const INITIAL_LEADS = [
-    { id: 1, client: "Alexander V.", email: "a.v@harbor.cap", property: "Penthouse 7B, Manhattan", dispatched: "2025-07-15", status: "Confirmed" },
-    { id: 2, client: "Isabella R.", email: "ir@luxeinvest.co", property: "Beachfront Est. #12, Malibu", dispatched: "2025-07-15", status: "Pending" },
-    { id: 3, client: "Marcus T.", email: "m.t@crescent.com", property: "Sky Villa 43, Dubai", dispatched: "2025-07-14", status: "Dispatched" },
-    { id: 4, client: "Sofia L.", email: "s.l@elitegroup.io", property: "Park Ave Triplex, NYC", dispatched: "2025-07-14", status: "Confirmed" },
-    { id: 5, client: "Dmitri P.", email: "d.p@volkov.capital", property: "Hillside Mansion, LA", dispatched: "2025-07-13", status: "Pending" },
-    { id: 6, client: "Elena G.", email: "e.g@mediterranean.re", property: "Coastal Villa, Mykonos", dispatched: "2025-07-13", status: "Dispatched" },
-    { id: 7, client: "Nathan W.", email: "nw@westbrook.com", property: "Central Tower 22, NYC", dispatched: "2025-07-12", status: "Confirmed" },
-    { id: 8, client: "Olivia M.", email: "olivia@prestige.ae", property: "Palm Jumeirah Villa", dispatched: "2025-07-12", status: "Pending" },
-    { id: 9, client: "James K.", email: "jk@silverlake.re", property: "Silver Lake Estate, LA", dispatched: "2025-07-11", status: "Confirmed" },
-    { id: 10, client: "Anya S.", email: "anya@nordic.capital", property: "Fjord Cabin, Norway", dispatched: "2025-07-11", status: "Dispatched" },
+// ═══════════════════════════════════════════════════════════
+// MOCK DATA — 10 Realistic Enterprise Records
+// ═══════════════════════════════════════════════════════════
+const LEDGER_DATA = [
+    { id: 'TX-8841', name: 'Elon Musk', email: 'elon.musk@x.com', status: 'Confirmed', time: '2m ago', value: '$12,400', avatar: 'EM', trend: [12, 19, 15, 25, 22, 30, 28] },
+    { id: 'TX-8842', name: 'Sundar Pichai', email: 'sundar.pichai@google.com', status: 'Pending', time: '14m ago', value: '$8,200', avatar: 'SP', trend: [8, 12, 10, 15, 18, 14, 20] },
+    { id: 'TX-8843', name: 'Satya Nadella', email: 'satya.nadella@microsoft.com', status: 'Confirmed', time: '32m ago', value: '$24,000', avatar: 'SN', trend: [20, 25, 22, 30, 35, 32, 40] },
+    { id: 'TX-8844', name: 'Tim Cook', email: 'tim.cook@apple.com', status: 'Confirmed', time: '1h ago', value: '$15,600', avatar: 'TC', trend: [15, 18, 16, 22, 20, 25, 28] },
+    { id: 'TX-8845', name: 'Jensen Huang', email: 'jensen.huang@nvidia.com', status: 'Pending', time: '2h ago', value: '$31,200', avatar: 'JH', trend: [25, 30, 28, 35, 40, 38, 45] },
+    { id: 'TX-8846', name: 'Jeff Bezos', email: 'jeff.bezos@amazon.com', status: 'Bounced', time: '3h ago', value: '$5,000', avatar: 'JB', trend: [10, 8, 12, 6, 9, 5, 8] },
+    { id: 'TX-8847', name: 'Mark Zuckerberg', email: 'mark.zuckerberg@meta.com', status: 'Confirmed', time: '4h ago', value: '$9,800', avatar: 'MZ', trend: [5, 10, 8, 15, 12, 18, 20] },
+    { id: 'TX-8848', name: 'Larry Ellison', email: 'larry.ellison@oracle.com', status: 'Pending', time: '5h ago', value: '$18,500', avatar: 'LE', trend: [18, 22, 20, 25, 28, 24, 30] },
+    { id: 'TX-8849', name: 'Tim Berners-Lee', email: 'tim@w3.org', status: 'Confirmed', time: '6h ago', value: '$2,400', avatar: 'TB', trend: [2, 5, 4, 8, 6, 10, 12] },
+    { id: 'TX-8850', name: 'Linus Torvalds', email: 'linus@linux.org', status: 'Confirmed', time: '7h ago', value: '$7,100', avatar: 'LT', trend: [6, 8, 7, 12, 10, 14, 16] },
 ];
 
-// --- METRICS WITH ICONS & DYNAMIC GROWTH ---
-const METRICS = [
-    { label: "Total Dispatches", value: "2,847", growth: "+12.4%", positive: true, icon: Send },
-    { label: "Confirmed", value: "1,843", growth: "+8.1%", positive: true, icon: CheckCircle },
-    { label: "Pending", value: "712", growth: "-2.3%", positive: false, icon: Clock },
-    { label: "Delivery Rate", value: "94.8%", growth: "+4.7%", positive: true, icon: Activity },
-];
+const STATUS_CONFIG = {
+    Confirmed: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400', spark: '#34d399' },
+    Pending: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', dot: 'bg-amber-400', spark: '#fbbf24' },
+    Bounced: { color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', dot: 'bg-rose-400', spark: '#fb7185' },
+};
 
-// --- 3D TILT CARD COMPONENT (Physics-Driven) ---
-const TiltMetricCard = ({ metric, index }) => {
-    const ref = useRef(null);
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
+const NAV_TABS = ['Overview', 'Dispatches', 'Analytics', 'Settings'];
+const FILTER_TABS = ['All', 'Confirmed', 'Pending'];
 
-    const rotateX = useTransform(y, [-100, 100], [8, -8]);
-    const rotateY = useTransform(x, [-100, 100], [-8, 8]);
-    const springConfig = { damping: 15, stiffness: 150 };
-    const springRotateX = useSpring(rotateX, springConfig);
-    const springRotateY = useSpring(rotateY, springConfig);
+// ═══════════════════════════════════════════════════════════
+// ANIMATED COUNTER HOOK
+// ═══════════════════════════════════════════════════════════
+function useCounter(target, duration = 2500) {
+    const [count, setCount] = useState(0);
+    useEffect(() => {
+        let start = 0;
+        const step = target / (duration / 16);
+        const timer = setInterval(() => {
+            start += step;
+            if (start >= target) {
+                setCount(target);
+                clearInterval(timer);
+            } else {
+                setCount(Math.floor(start));
+            }
+        }, 16);
+        return () => clearInterval(timer);
+    }, [target, duration]);
+    return count;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEXT SCRAMBLE EFFECT
+// ═══════════════════════════════════════════════════════════
+function useTextScramble(finalText, trigger) {
+    const [display, setDisplay] = useState('');
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
+
+    useEffect(() => {
+        if (!trigger) return;
+        let iteration = 0;
+        const interval = setInterval(() => {
+            setDisplay(
+                finalText
+                    .split('')
+                    .map((letter, index) => {
+                        if (index < iteration) return finalText[index];
+                        return chars[Math.floor(Math.random() * chars.length)];
+                    })
+                    .join('')
+            );
+            if (iteration >= finalText.length) clearInterval(interval);
+            iteration += 1 / 2;
+        }, 40);
+        return () => clearInterval(interval);
+    }, [trigger, finalText]);
+
+    return display;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 3D TILT CARD
+// ═══════════════════════════════════════════════════════════
+function TiltCard({ children, className = '', glowColor = 'rgba(6,182,212,0.15)' }) {
+    const cardRef = useRef(null);
 
     const handleMouseMove = (e) => {
-        const rect = ref.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        x.set(e.clientX - centerX);
-        y.set(e.clientY - centerY);
+        const card = cardRef.current;
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -10;
+        const rotateY = ((x - centerX) / centerX) * 10;
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        card.style.setProperty('--glow-x', `${x}px`);
+        card.style.setProperty('--glow-y', `${y}px`);
     };
 
     const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
+        const card = cardRef.current;
+        if (!card) return;
+        card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
     };
 
-    const Icon = metric.icon;
-
     return (
-        <motion.div
-            ref={ref}
+        <div
+            ref={cardRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            style={{
-                rotateX: springRotateX,
-                rotateY: springRotateY,
-                transformStyle: "preserve-3d",
-            }}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1, duration: 0.6, type: "spring", stiffness: 100 }}
-            className="relative bg-slate-800/40 backdrop-blur-2xl border-t border-l border-white/10 shadow-[8px_8px_24px_rgba(0,0,0,0.6),_-8px_-8px_24px_rgba(255,255,255,0.02)] rounded-2xl p-6 transition-all hover:border-blue-500/30 group"
+            className={`relative transition-transform duration-100 ease-out ${className}`}
+            style={{ transformStyle: 'preserve-3d' }}
         >
-            {/* Glow effect on hover */}
-            <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-blue-600/0 via-blue-600/0 to-cyan-400/0 group-hover:from-blue-600/10 group-hover:via-cyan-400/10 group-hover:to-transparent transition-all duration-700 blur-xl -z-10"></div>
-
-            <div className="flex justify-between items-start">
-                <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-[inset_0_0_12px_rgba(37,99,235,0.2)]">
-                    <Icon className="w-5 h-5 text-blue-400" />
-                </div>
-                <span
-                    className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] border flex items-center gap-1 ${metric.positive
-                        ? "bg-emerald-900/40 text-emerald-300 border-emerald-500/30"
-                        : "bg-rose-900/40 text-rose-300 border-rose-500/30"
-                        }`}
-                >
-                    {metric.positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {metric.growth}
-                </span>
-            </div>
-
-            <div className="mt-3" style={{ transform: "translateZ(40px)" }}>
-                <span className="text-zinc-400 text-xs font-medium uppercase tracking-widest">{metric.label}</span>
-                <div className="text-4xl font-bold tracking-tight text-white drop-shadow-lg bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
-                    {metric.value}
-                </div>
-            </div>
-
-            {/* 3D Progress Glow */}
-            <div className="mt-4 h-1.5 w-full bg-slate-700/50 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] overflow-hidden">
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, index * 20 + 40)}%` }}
-                    transition={{ delay: 0.5, duration: 1.5, ease: "easeOut" }}
-                    className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-                />
-            </div>
-        </motion.div>
+            <div
+                className="absolute inset-0 rounded-2xl opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                style={{
+                    background: `radial-gradient(400px circle at var(--glow-x, 50%) var(--glow-y, 50%), ${glowColor}, transparent 40%)`
+                }}
+            />
+            {children}
+        </div>
     );
-};
+}
 
-// --- MAIN DASHBOARD ---
-export default function DashboardPage() {
-    const [activeTab, setActiveTab] = useState("Overview");
-    const [filterStatus, setFilterStatus] = useState("All");
-    const [searchQuery, setSearchQuery] = useState("");
-
-    // Filter Logic
-    const filteredLeads = INITIAL_LEADS.filter((item) => {
-        const matchesStatus = filterStatus === "All" || item.status === filterStatus;
-        const matchesSearch =
-            item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.email.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesStatus && matchesSearch;
-    });
-
-    // Status Badge Component (with Glow)
-    const StatusBadge = ({ status }) => {
-        const base =
-            "px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border shadow-[2px_2px_8px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.05)] flex items-center gap-1.5";
-
-        switch (status) {
-            case "Confirmed":
-                return (
-                    <span className={`${base} bg-emerald-900/60 text-emerald-300 border-emerald-500/40 shadow-emerald-900/20`}>
-                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
-                        Confirmed
-                    </span>
-                );
-            case "Pending":
-                return (
-                    <span className={`${base} bg-amber-900/60 text-amber-300 border-amber-500/40 shadow-amber-900/20`}>
-                        <span className="w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse"></span>
-                        Pending
-                    </span>
-                );
-            default:
-                return (
-                    <span className={`${base} bg-blue-900/60 text-blue-300 border-blue-500/40 shadow-blue-900/20`}>
-                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]"></span>
-                        Dispatched
-                    </span>
-                );
-        }
-    };
+// ═══════════════════════════════════════════════════════════
+// SPARKLINE CHART
+// ═══════════════════════════════════════════════════════════
+function Sparkline({ data, color }) {
+    const max = Math.max(...data);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+    const points = data.map((val, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 100 - ((val - min) / range) * 80 - 10;
+        return `${x},${y}`;
+    }).join(' ');
 
     return (
-        <div className="relative min-h-screen bg-slate-950 overflow-x-hidden font-sans antialiased selection:bg-blue-600/30 p-6 md:p-8">
+        <svg className="w-full h-10 mt-3" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            <polyline
+                points={points}
+                fill="none"
+                stroke={color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+            />
+            <polygon
+                points={`0,100 ${points} 100,100`}
+                fill={`url(#grad-${color})`}
+                stroke="none"
+            />
+        </svg>
+    );
+}
 
-            {/* --- EXTREME ANIMATED BACKGROUND (Nebula Orbs) --- */}
-            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                <motion.div
-                    initial={{ x: 0, y: 0 }}
-                    animate={{ x: 100, y: 100 }}
-                    transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
-                    className="absolute top-[-20%] left-[-10%] w-[50rem] h-[50rem] bg-blue-600/20 rounded-full blur-3xl"
+// ═══════════════════════════════════════════════════════════
+// MAIN DASHBOARD
+// ═══════════════════════════════════════════════════════════
+export default function AbyssalCommand() {
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [activeTab, setActiveTab] = useState('Overview');
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [mounted, setMounted] = useState(false);
+
+    // Entrance animation
+    useEffect(() => {
+        const timer = setTimeout(() => setMounted(true), 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Mouse spotlight tracking
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            setMousePos({ x: e.clientX, y: e.clientY });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
+
+    // Animated counters
+    const totalDispatches = useCounter(2847);
+    const confirmedCount = useCounter(2412);
+    const pendingCount = useCounter(312);
+    const deliveryRate = useCounter(94);
+
+    // Text scramble
+    const scrambledTitle = useTextScramble('COMMAND CENTER', mounted);
+
+    // Filter logic
+    const filteredData = useMemo(() => {
+        return LEDGER_DATA.filter((item) => {
+            const matchesFilter = filterStatus === 'All' || item.status === filterStatus;
+            const matchesSearch =
+                item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.id.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesFilter && matchesSearch;
+        });
+    }, [filterStatus, searchQuery]);
+
+    // Metrics config
+    const metrics = [
+        { label: 'Total Dispatches', value: totalDispatches, suffix: '', color: '#06b6d4', spark: [20, 35, 25, 45, 30, 50, 40, 60, 55, 70] },
+        { label: 'Confirmed', value: confirmedCount, suffix: '', color: '#34d399', spark: [15, 25, 20, 30, 25, 35, 30, 40, 38, 45] },
+        { label: 'Pending', value: pendingCount, suffix: '', color: '#fbbf24', spark: [5, 8, 6, 10, 8, 12, 10, 15, 12, 18] },
+        { label: 'Delivery Rate', value: deliveryRate, suffix: '%', color: '#a78bfa', spark: [70, 72, 75, 78, 80, 82, 85, 88, 90, 94] },
+    ];
+
+    return (
+        <div className="min-h-screen bg-[#020203] text-white font-sans selection:bg-cyan-500/40 selection:text-cyan-100 overflow-x-hidden">
+            {/* GLOBAL STYLES */}
+            <style>{`
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020203; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -30px) scale(1.05); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+        @keyframes gridMove {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(60px); }
+        }
+      `}</style>
+
+            {/* MOUSE SPOTLIGHT */}
+            <div
+                className="pointer-events-none fixed inset-0 z-[100] transition-opacity duration-700"
+                style={{
+                    background: `radial-gradient(700px circle at ${mousePos.x}px ${mousePos.y}px, rgba(6, 182, 212, 0.07), transparent 40%)`
+                }}
+            />
+
+            {/* ANIMATED AURORA ORBS */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div
+                    className="absolute top-[-20%] left-[-10%] w-[900px] h-[900px] bg-purple-900/15 rounded-full blur-[150px]"
+                    style={{ animation: 'float 20s ease-in-out infinite' }}
                 />
-                <motion.div
-                    initial={{ x: 0, y: 0 }}
-                    animate={{ x: -80, y: 150 }}
-                    transition={{ duration: 25, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
-                    className="absolute bottom-[-20%] right-[-10%] w-[40rem] h-[40rem] bg-purple-600/20 rounded-full blur-3xl"
+                <div
+                    className="absolute bottom-[-20%] right-[-10%] w-[900px] h-[900px] bg-blue-900/15 rounded-full blur-[150px]"
+                    style={{ animation: 'float 25s ease-in-out infinite 5s' }}
                 />
-                <motion.div
-                    initial={{ opacity: 0.5 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 10, repeat: Infinity, repeatType: "mirror" }}
-                    className="absolute top-[50%] left-[50%] w-[30rem] h-[30rem] bg-cyan-500/10 rounded-full blur-3xl"
+                <div
+                    className="absolute top-[30%] left-[50%] w-[600px] h-[600px] bg-cyan-900/10 rounded-full blur-[120px]"
+                    style={{ animation: 'float 18s ease-in-out infinite 10s' }}
                 />
             </div>
 
-            <div className="relative max-w-7xl mx-auto space-y-8">
+            {/* MOVING GRID */}
+            <div className="fixed inset-0 pointer-events-none opacity-20">
+                <div
+                    className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.07)_1px,transparent_1px)] bg-[size:80px_80px]"
+                    style={{ animation: 'gridMove 20s linear infinite' }}
+                />
+            </div>
 
-                {/* --- 1. FLOATING 3D HEADER WITH SPARKLINE --- */}
-                <motion.div
-                    initial={{ y: -20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, type: "spring", stiffness: 120 }}
-                    className="sticky top-4 z-50 w-full"
+            {/* CONTENT */}
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+
+                {/* ═══════════════════════════════════════════════════ */}
+                {/* HEADER                                            */}
+                {/* ═══════════════════════════════════════════════════ */}
+                <header
+                    className={`flex items-center justify-between mb-20 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-12'
+                        }`}
                 >
-                    <div className="bg-slate-900/60 backdrop-blur-2xl border-t border-l border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] rounded-[2.5rem] px-4 py-2 flex flex-wrap items-center justify-between gap-4">
-
-                        {/* Branding */}
-                        <div className="flex items-center gap-3 pl-2">
-                            <div className="relative w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl shadow-[inset_0_-4px_0_rgba(0,0,0,0.3),0_8px_24px_rgba(37,99,235,0.5)] flex items-center justify-center font-black text-white text-lg">
-                                Q
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900 shadow-[0_0_12px_rgba(52,211,153,0.6)]"></div>
-                            </div>
-                            <div>
-                                <span className="text-white font-bold tracking-tight text-lg">QORVX</span>
-                                <span className="text-zinc-500 text-[8px] uppercase tracking-widest block -mt-0.5">Spatial Titanium</span>
-                            </div>
-                        </div>
-
-                        {/* Mini Sparkline (Live Activity) */}
-                        <div className="hidden md:flex items-center gap-4 bg-slate-800/30 px-4 py-1.5 rounded-full border border-white/5">
-                            <span className="text-[10px] text-zinc-400 uppercase tracking-widest flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                                Live
-                            </span>
-                            <svg width="80" height="24" viewBox="0 0 80 24" fill="none">
-                                <path d="M2 22 L10 14 L18 18 L26 8 L34 12 L42 4 L50 16 L58 10 L66 20 L74 14 L78 18" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
-                                <path d="M2 22 L10 14 L18 18 L26 8 L34 12 L42 4 L50 16 L58 10 L66 20 L74 14 L78 18" stroke="url(#blueGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
-                                <defs>
-                                    <linearGradient id="blueGradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0" />
-                                        <stop offset="100%" stopColor="#60a5fa" stopOpacity="1" />
-                                    </linearGradient>
-                                </defs>
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(6,182,212,0.4)]">
+                            <div className="absolute inset-0 rounded-xl bg-cyan-400/20 animate-pulse" />
+                            <svg className="w-5 h-5 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
-                            <span className="text-emerald-400 text-xs font-mono font-bold">+2.1%</span>
                         </div>
-
-                        {/* Navigation Tabs */}
-                        <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)]">
-                            {["Overview", "Leads", "Analytics"].map((tab) => (
-                                <motion.button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    whileTap={{ scale: 0.95 }}
-                                    className={`px-5 py-1.5 text-sm font-semibold tracking-tight rounded-full transition-all duration-300 ${activeTab === tab
-                                        ? "bg-blue-600 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.3),0_4px_16px_rgba(37,99,235,0.6)]"
-                                        : "text-zinc-400 hover:text-white hover:bg-slate-700/50"
-                                        }`}
-                                >
-                                    {tab}
-                                </motion.button>
-                            ))}
-                        </div>
-
-                        {/* Profile */}
-                        <div className="flex items-center gap-3 pr-2">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-[0_4px_16px_rgba(37,99,235,0.4)] flex items-center justify-center text-white text-xs font-bold border border-white/10 ring-2 ring-blue-500/20">
-                                JD
-                            </div>
-                            <MoreHorizontal className="w-5 h-5 text-zinc-500 hover:text-white cursor-pointer transition" />
+                        <div>
+                            <span className="text-lg font-bold tracking-tight text-white">NEXUS</span>
+                            <span className="block text-[9px] text-zinc-600 uppercase tracking-[0.3em] font-bold">Core Systems</span>
                         </div>
                     </div>
-                </motion.div>
 
-                {/* --- 2. THE ISOMETRIC TILT METRICS DECK --- */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {METRICS.map((metric, idx) => (
-                        <TiltMetricCard key={idx} metric={metric} index={idx} />
+                    <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-full p-1 shadow-2xl">
+                        {NAV_TABS.map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`relative px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === tab
+                                    ? 'text-white'
+                                    : 'text-zinc-600 hover:text-zinc-300'
+                                    }`}
+                            >
+                                {activeTab === tab && (
+                                    <div className="absolute inset-0 bg-white/10 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] border border-white/5" />
+                                )}
+                                <span className="relative z-10">{tab}</span>
+                            </button>
+                        ))}
+                    </nav>
+
+                    <div className="flex items-center gap-3">
+                        <div className="hidden sm:flex flex-col items-end">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">System Status</span>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                Online
+                            </span>
+                        </div>
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-[10px] font-bold text-zinc-300 shadow-lg">
+                            AC
+                        </div>
+                    </div>
+                </header>
+
+                {/* ═══════════════════════════════════════════════════ */}
+                {/* HERO — SCRAMBLE TEXT                              */}
+                {/* ═══════════════════════════════════════════════════ */}
+                <div
+                    className={`mb-16 transition-all duration-1000 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                        }`}
+                >
+                    <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-2">
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-600">
+                            {scrambledTitle || 'COMMAND CENTER'}
+                        </span>
+                    </h1>
+                    <div className="flex items-center gap-4">
+                        <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
+                        <p className="text-zinc-500 text-sm font-medium tracking-wide uppercase">
+                            Real-time Dispatch Orchestration
+                        </p>
+                        <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/50 to-transparent" />
+                    </div>
+                </div>
+
+                {/* ═══════════════════════════════════════════════════ */}
+                {/* BENTO METRICS DECK                                */}
+                {/* ═══════════════════════════════════════════════════ */}
+                <div
+                    className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-12 transition-all duration-1000 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                        }`}
+                >
+                    {metrics.map((metric, i) => (
+                        <TiltCard key={metric.label} glowColor={`${metric.color}20`}>
+                            <div className="relative h-full bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 overflow-hidden group hover:border-white/20 transition-colors duration-500 shadow-2xl">
+                                {/* Ambient glow */}
+                                <div
+                                    className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-500"
+                                    style={{ backgroundColor: metric.color }}
+                                />
+
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+                                            {metric.label}
+                                        </span>
+                                        <div
+                                            className="w-2 h-2 rounded-full shadow-[0_0_10px]"
+                                            style={{ backgroundColor: metric.color, boxShadow: `0 0 10px ${metric.color}` }}
+                                        />
+                                    </div>
+
+                                    <div className="text-4xl font-black tracking-tight text-white mb-1">
+                                        {metric.value.toLocaleString()}{metric.suffix}
+                                    </div>
+
+                                    <Sparkline data={metric.spark} color={metric.color} />
+                                </div>
+                            </div>
+                        </TiltCard>
                     ))}
                 </div>
 
-                {/* --- 3. DYNAMIC FILTER CONSOLE (Glowing Search) --- */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.5 }}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800/20 backdrop-blur-sm border border-white/5 shadow-[6px_6px_20px_rgba(0,0,0,0.4)] rounded-2xl p-4"
+                {/* ═══════════════════════════════════════════════════ */}
+                {/* FILTER CONSOLE                                    */}
+                {/* ═══════════════════════════════════════════════════ */}
+                <div
+                    className={`flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 transition-all duration-1000 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                        }`}
                 >
-                    <div className="relative w-full sm:w-80 group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-blue-400 transition-colors" />
+                    <div className="relative w-full sm:w-[28rem] group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg className="w-4 h-4 text-zinc-700 group-focus-within:text-cyan-400 transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
                         <input
                             type="text"
-                            placeholder="Search clients, properties, email..."
+                            placeholder="Search by name, email, or transaction ID..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-slate-900/80 text-white placeholder:text-zinc-600 pl-10 pr-4 py-2.5 rounded-xl border border-white/5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] focus:outline-none focus:ring-2 focus:ring-blue-600/60 focus:border-transparent transition-all duration-300 text-sm"
+                            className="w-full pl-11 pr-4 py-3.5 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-xl text-sm text-white placeholder-zinc-700
+                focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:shadow-[0_0_30px_rgba(6,182,212,0.1)]
+                transition-all duration-300 shadow-xl"
                         />
-                        <div className="absolute inset-0 rounded-xl bg-blue-600/0 group-focus-within:bg-blue-600/5 blur-xl -z-10 transition-all duration-500"></div>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-slate-900/40 p-1 rounded-xl shadow-[inset_0_2px_8px_rgba(0,0,0,0.4)] flex-wrap">
-                        {["All", "Confirmed", "Pending", "Dispatched"].map((status) => (
-                            <motion.button
-                                key={status}
-                                onClick={() => setFilterStatus(status)}
-                                whileTap={{ scale: 0.92 }}
-                                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-300 border ${filterStatus === status
-                                    ? "bg-blue-600 text-white border-blue-700 shadow-[inset_0_-3px_0_rgba(0,0,0,0.3),0_4px_16px_rgba(37,99,235,0.4)]"
-                                    : "text-zinc-400 border-transparent hover:bg-slate-700/50 hover:text-white"
-                                    }`}
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-600 hover:text-white transition-colors"
                             >
-                                {status}
-                            </motion.button>
-                        ))}
-                    </div>
-                </motion.div>
-
-                {/* --- 4. ENTERPRISE 3D LEDGER (Staggered Table) --- */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.6 }}
-                    className="bg-slate-800/30 backdrop-blur-2xl border-t border-l border-white/10 shadow-[8px_8px_32px_rgba(0,0,0,0.7),_-8px_-8px_32px_rgba(255,255,255,0.01)] rounded-2xl overflow-hidden"
-                >
-                    {/* Table Head */}
-                    <div className="grid grid-cols-5 gap-4 px-6 py-4 bg-slate-900/60 border-b border-slate-700/50 shadow-[inset_0_-2px_0_rgba(255,255,255,0.02)]">
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Client</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hidden md:block">Email</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">Property</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hidden sm:block">Dispatched</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-right">Status</div>
-                    </div>
-
-                    {/* Table Body with Staggered Animation */}
-                    <div className="divide-y divide-slate-700/30 max-h-[420px] overflow-y-auto custom-scroll">
-                        {filteredLeads.length > 0 ? (
-                            filteredLeads.map((lead, idx) => (
-                                <motion.div
-                                    key={lead.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.04, duration: 0.4, ease: "easeOut" }}
-                                    className="grid grid-cols-5 gap-4 px-6 py-4 transition-all duration-200 hover:bg-slate-700/30 hover:border-l-2 hover:border-l-blue-500 border-b border-slate-700/30 last:border-b-0"
-                                >
-                                    <div className="col-span-1 flex items-center">
-                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-[10px] font-bold text-white mr-3 shadow-inner">
-                                            {lead.client.charAt(0)}
-                                        </div>
-                                        <span className="text-white font-semibold tracking-tight text-sm truncate">{lead.client}</span>
-                                    </div>
-                                    <div className="col-span-1 flex items-center text-zinc-400 text-sm font-mono tracking-tight hidden md:flex truncate">
-                                        {lead.email}
-                                    </div>
-                                    <div className="col-span-1 flex items-center text-zinc-300 text-sm font-medium truncate">
-                                        <ArrowUpRight className="w-3 h-3 text-blue-400 mr-1.5 flex-shrink-0" />
-                                        {lead.property}
-                                    </div>
-                                    <div className="col-span-1 flex items-center text-zinc-500 text-xs font-medium hidden sm:flex">
-                                        {lead.dispatched}
-                                    </div>
-                                    <div className="col-span-1 flex items-center justify-end">
-                                        <StatusBadge status={lead.status} />
-                                    </div>
-                                </motion.div>
-                            ))
-                        ) : (
-                            <div className="px-6 py-16 text-center">
-                                <div className="text-zinc-600 text-sm font-medium tracking-tight">No intel matches the current filters.</div>
-                            </div>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         )}
                     </div>
 
-                    {/* Table Footer */}
-                    <div className="px-6 py-3 bg-slate-900/40 border-t border-white/5 shadow-[inset_0_8px_20px_rgba(0,0,0,0.3)] flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                <span className="text-white font-bold">{filteredLeads.length}</span> Entries
-                            </span>
-                            <span className="text-[10px] uppercase tracking-widest text-zinc-600 hidden sm:inline">• Last updated 2s ago</span>
+                    <div className="flex items-center gap-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-xl p-1 shadow-xl">
+                        {FILTER_TABS.map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilterStatus(f)}
+                                className={`relative px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${filterStatus === f
+                                    ? 'text-white'
+                                    : 'text-zinc-600 hover:text-zinc-300'
+                                    }`}
+                            >
+                                {filterStatus === f && (
+                                    <div className="absolute inset-0 bg-white/10 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] border border-white/5" />
+                                )}
+                                <span className="relative z-10">{f}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* ═══════════════════════════════════════════════════ */}
+                {/* ENTERPRISE LEDGER                                 */}
+                {/* ═══════════════════════════════════════════════════ */}
+                <div
+                    className={`transition-all duration-1000 delay-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                        }`}
+                >
+                    <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
+                        {/* Top gradient line */}
+                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+
+                        {/* Table Header */}
+                        <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 bg-slate-900/50">
+                            <div className="col-span-2 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">ID</div>
+                            <div className="col-span-3 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Recipient</div>
+                            <div className="col-span-3 hidden md:block text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Email</div>
+                            <div className="col-span-2 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Status</div>
+                            <div className="col-span-2 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] text-right">Time</div>
+                            <div className="col-span-1 text-right hidden sm:block text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Value</div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-20 h-1.5 bg-slate-700/50 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
-                                <div className="w-3/4 h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full shadow-[0_0_12px_rgba(37,99,235,0.3)]"></div>
-                            </div>
-                            <span className="text-[10px] text-zinc-500 font-mono">72%</span>
+
+                        {/* Table Body */}
+                        <div className="divide-y divide-white/[0.03]">
+                            {filteredData.length > 0 ? (
+                                filteredData.map((item, index) => {
+                                    const status = STATUS_CONFIG[item.status];
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className="group grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-white/[0.03] transition-all duration-300 cursor-pointer relative overflow-hidden"
+                                            style={{
+                                                opacity: 0,
+                                                animation: `fadeIn 0.5s ease-out ${index * 0.05}s forwards`
+                                            }}
+                                        >
+                                            <style>{`
+                        @keyframes fadeIn {
+                          from { opacity: 0; transform: translateX(-10px); }
+                          to { opacity: 1; transform: translateX(0); }
+                        }
+                      `}</style>
+
+                                            {/* Hover sweep effect */}
+                                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/[0.03] to-cyan-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+
+                                            <div className="col-span-2 relative z-10">
+                                                <span className="text-xs font-mono text-zinc-600 group-hover:text-cyan-400 transition-colors duration-300 tracking-wider">{item.id}</span>
+                                            </div>
+                                            <div className="col-span-3 relative z-10 flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center text-[10px] font-bold text-zinc-400 group-hover:text-white group-hover:border-cyan-500/30 transition-all duration-300 shadow-lg">
+                                                    {item.avatar}
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors duration-300 block">{item.name}</span>
+                                                    <span className="text-[10px] text-zinc-700 md:hidden">{item.email}</span>
+                                                </div>
+                                            </div>
+                                            <div className="col-span-3 hidden md:block relative z-10">
+                                                <span className="text-xs text-zinc-600 group-hover:text-zinc-400 transition-colors duration-300 font-mono">{item.email}</span>
+                                            </div>
+                                            <div className="col-span-2 relative z-10">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${status.bg} ${status.color} ${status.border} shadow-[0_0_10px_rgba(0,0,0,0.3)]`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${status.dot} ${item.status === 'Pending' ? 'animate-pulse' : ''}`} style={{ boxShadow: item.status === 'Confirmed' ? `0 0 6px ${status.spark}` : 'none' }} />
+                                                    {item.status}
+                                                </span>
+                                            </div>
+                                            <div className="col-span-2 relative z-10 text-right">
+                                                <span className="text-xs text-zinc-700 group-hover:text-zinc-400 transition-colors duration-300 tabular-nums font-mono">{item.time}</span>
+                                            </div>
+                                            <div className="col-span-1 relative z-10 text-right hidden sm:block">
+                                                <span className="text-xs font-bold text-zinc-300 group-hover:text-white transition-colors duration-300 tabular-nums font-mono">{item.value}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="px-6 py-16 text-center">
+                                    <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-sm text-zinc-600 font-medium">No records found matching your criteria.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
-                </motion.div>
 
-                {/* Micro Status */}
-                <div className="flex justify-end mt-2">
-                    <div className="text-[10px] uppercase tracking-widest text-zinc-600/50 flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-blue-400" />
-                            QORVX Core v3.2.1
-                        </span>
-                        <span className="w-1 h-1 bg-zinc-700 rounded-full"></span>
-                        <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-                            All Systems Nomiinal
+                    {/* Footer Meta */}
+                    <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-zinc-800 uppercase tracking-[0.2em] font-bold">
+                        <span>Displaying {filteredData.length} of {LEDGER_DATA.length} records</span>
+                        <span className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                            Live Sync Active • {new Date().toLocaleTimeString()}
                         </span>
                     </div>
                 </div>
-            </div>
 
-            {/* Custom Scrollbar Styling (Injected) */}
-            <style jsx>{`
-        .custom-scroll::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-          background: #1e293b;
-          border-radius: 10px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb:hover {
-          background: #3b82f6;
-        }
-      `}</style>
+            </div>
         </div>
     );
 }
