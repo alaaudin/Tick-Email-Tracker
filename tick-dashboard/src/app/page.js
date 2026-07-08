@@ -1,240 +1,290 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import {
-    Search,
-    Sun,
-    Moon,
-    TrendingUp,
-    TrendingDown,
-    ArrowUpRight,
-    CheckCircle,
-    Clock,
-    Send
-} from "lucide-react";
+import React, { useState, useEffect, useMemo } from 'react';
 
-// --- MOCK DATA ---
-const INITIAL_LEADS = [
-    { id: 1, client: "Alexander V.", email: "a.v@harbor.cap", property: "Penthouse 7B, Manhattan", dispatched: "Jul 15", status: "Confirmed" },
-    { id: 2, client: "Isabella R.", email: "ir@luxeinvest.co", property: "Beachfront Est. #12", dispatched: "Jul 15", status: "Pending" },
-    { id: 3, client: "Marcus T.", email: "m.t@crescent.com", property: "Sky Villa 43, Dubai", dispatched: "Jul 14", status: "Dispatched" },
-    { id: 4, client: "Sofia L.", email: "s.l@elitegroup.io", property: "Park Ave Triplex, NYC", dispatched: "Jul 14", status: "Confirmed" },
-    { id: 5, client: "Dmitri P.", email: "d.p@volkov.capital", property: "Hillside Mansion, LA", dispatched: "Jul 13", status: "Pending" },
-    { id: 6, client: "Elena G.", email: "e.g@mediterranean.re", property: "Coastal Villa, Mykonos", dispatched: "Jul 13", status: "Dispatched" },
-    { id: 7, client: "Nathan W.", email: "nw@westbrook.com", property: "Central Tower 22, NYC", dispatched: "Jul 12", status: "Confirmed" },
+// ─────────────────────────────────────────────────────────────
+// MOCK DATA
+// ─────────────────────────────────────────────────────────────
+const LEDGER_DATA = [
+    { id: 'TX-8841', name: 'Elon Musk', email: 'elon.musk@x.com', status: 'Confirmed', time: '2m ago', value: '$12,400' },
+    { id: 'TX-8842', name: 'Sundar Pichai', email: 'sundar.pichai@google.com', status: 'Pending', time: '14m ago', value: '$8,200' },
+    { id: 'TX-8843', name: 'Satya Nadella', email: 'satya.nadella@microsoft.com', status: 'Confirmed', time: '32m ago', value: '$24,000' },
+    { id: 'TX-8844', name: 'Tim Cook', email: 'tim.cook@apple.com', status: 'Confirmed', time: '1h ago', value: '$15,600' },
+    { id: 'TX-8845', name: 'Jensen Huang', email: 'jensen.huang@nvidia.com', status: 'Pending', time: '2h ago', value: '$31,200' },
+    { id: 'TX-8846', name: 'Jeff Bezos', email: 'jeff.bezos@amazon.com', status: 'Bounced', time: '3h ago', value: '$5,000' },
+    { id: 'TX-8847', name: 'Mark Zuckerberg', email: 'mark.zuckerberg@meta.com', status: 'Confirmed', time: '4h ago', value: '$9,800' },
+    { id: 'TX-8848', name: 'Larry Ellison', email: 'larry.ellison@oracle.com', status: 'Pending', time: '5h ago', value: '$18,500' },
+    { id: 'TX-8849', name: 'Tim Berners-Lee', email: 'tim@w3.org', status: 'Confirmed', time: '6h ago', value: '$2,400' },
+    { id: 'TX-8850', name: 'Linus Torvalds', email: 'linus@linux.org', status: 'Confirmed', time: '7h ago', value: '$7,100' },
 ];
 
-const METRICS = [
-    { label: "Total Dispatches", value: "2,847", growth: "+12.4%", positive: true },
-    { label: "Confirmed", value: "1,843", growth: "+8.1%", positive: true },
-    { label: "Pending", value: "712", growth: "-2.3%", positive: false },
-    { label: "Delivery Rate", value: "94.8%", growth: "+4.7%", positive: true },
-];
+const FILTER_TABS = ['All', 'Confirmed', 'Pending'];
 
-export default function DashboardPage() {
-    // --- THEME STATE (Light / Dark) ---
-    const [theme, setTheme] = useState("dark");
-    const [activeTab, setActiveTab] = useState("Overview");
-    const [filterStatus, setFilterStatus] = useState("All");
-    const [searchQuery, setSearchQuery] = useState("");
+// ─────────────────────────────────────────────────────────────
+// THEME CONFIG
+// ─────────────────────────────────────────────────────────────
+const THEMES = {
+    light: {
+        bg: 'bg-[#faf9f7]',
+        text: 'text-[#1c1c1c]',
+        muted: 'text-[#8c8c8c]',
+        border: 'border-[#e8e8e8]',
+        surface: 'bg-white',
+        hover: 'hover:bg-[#f0f0f0]',
+        input: 'bg-[#f5f5f5]',
+        badge: {
+            Confirmed: 'text-emerald-700',
+            Pending: 'text-amber-700',
+            Bounced: 'text-rose-700',
+        },
+        dot: {
+            Confirmed: 'bg-emerald-600',
+            Pending: 'bg-amber-500',
+            Bounced: 'bg-rose-600',
+        },
+        activeTab: 'bg-[#1c1c1c] text-white',
+        inactiveTab: 'text-[#8c8c8c] hover:text-[#1c1c1c]',
+        tableHeader: 'text-[#8c8c8c]',
+        rowHover: 'hover:bg-[#f5f5f5]',
+        icon: 'text-[#1c1c1c]',
+        clock: 'text-[#8c8c8c]',
+    },
+    dark: {
+        bg: 'bg-[#0a0a0a]',
+        text: 'text-[#f5f5f5]',
+        muted: 'text-[#666666]',
+        border: 'border-[#1f1f1f]',
+        surface: 'bg-[#111111]',
+        hover: 'hover:bg-[#1a1a1a]',
+        input: 'bg-[#111111]',
+        badge: {
+            Confirmed: 'text-emerald-400',
+            Pending: 'text-amber-400',
+            Bounced: 'text-rose-400',
+        },
+        dot: {
+            Confirmed: 'bg-emerald-500',
+            Pending: 'bg-amber-500',
+            Bounced: 'bg-rose-500',
+        },
+        activeTab: 'bg-[#f5f5f5] text-[#0a0a0a]',
+        inactiveTab: 'text-[#666666] hover:text-[#f5f5f5]',
+        tableHeader: 'text-[#666666]',
+        rowHover: 'hover:bg-[#111111]',
+        icon: 'text-[#f5f5f5]',
+        clock: 'text-[#666666]',
+    },
+};
 
-    const isDark = theme === "dark";
+// ─────────────────────────────────────────────────────────────
+// LIVE CLOCK
+// ─────────────────────────────────────────────────────────────
+function LiveClock({ theme }) {
+    const [time, setTime] = useState('');
+    useEffect(() => {
+        const update = () => setTime(new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        update();
+        const interval = setInterval(update, 1000);
+        return () => clearInterval(interval);
+    }, []);
+    return <span className={`font-mono text-[11px] tracking-widest ${theme.clock}`}>{time}</span>;
+}
 
-    // --- THEME COLORS (Conditional) ---
-    const bgBase = isDark ? "bg-neutral-950" : "bg-stone-50";
-    const bgSurface = isDark ? "bg-neutral-900/60" : "bg-white/60";
-    const bgCard = isDark ? "bg-neutral-900" : "bg-white";
-    const borderColor = isDark ? "border-neutral-800" : "border-stone-200";
-    const textPrimary = isDark ? "text-white" : "text-neutral-900";
-    const textSecondary = isDark ? "text-neutral-400" : "text-stone-500";
-    const textMuted = isDark ? "text-neutral-600" : "text-stone-400";
-    const hoverBg = isDark ? "hover:bg-neutral-800" : "hover:bg-stone-100";
+// ─────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────
+export default function UltraMinimalist() {
+    const [theme, setTheme] = useState('light');
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [mounted, setMounted] = useState(false);
 
-    // Filter Logic
-    const filteredLeads = INITIAL_LEADS.filter((item) => {
-        const matchesStatus = filterStatus === "All" || item.status === filterStatus;
-        const matchesSearch =
-            item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.email.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesStatus && matchesSearch;
-    });
+    const t = THEMES[theme];
 
-    // --- STATUS BADGE (Ultra Minimal) ---
-    const StatusBadge = ({ status }) => {
-        const base = `px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-md transition-colors`;
-        if (status === "Confirmed") {
-            return <span className={`${base} ${isDark ? 'bg-emerald-950/30 text-emerald-300 border-emerald-800' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>Confirmed</span>;
-        } else if (status === "Pending") {
-            return <span className={`${base} ${isDark ? 'bg-amber-950/30 text-amber-300 border-amber-800' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>Pending</span>;
-        } else {
-            return <span className={`${base} ${isDark ? 'bg-blue-950/30 text-blue-300 border-blue-800' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>Dispatched</span>;
-        }
-    };
+    useEffect(() => {
+        const timer = setTimeout(() => setMounted(true), 50);
+        return () => clearTimeout(timer);
+    }, []);
 
-    const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+    const filteredData = useMemo(() => {
+        return LEDGER_DATA.filter((item) => {
+            const matchesFilter = filterStatus === 'All' || item.status === filterStatus;
+            const matchesSearch =
+                item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.id.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesFilter && matchesSearch;
+        });
+    }, [filterStatus, searchQuery]);
+
+    const toggleTheme = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
 
     return (
-        <div className={`min-h-screen ${bgBase} ${textPrimary} font-sans antialiased transition-colors duration-500 ease-in-out`}>
-            <div className="max-w-6xl mx-auto px-6 py-8 md:py-12">
+        <div className={`min-h-screen ${t.bg} ${t.text} transition-colors duration-700 ease-out selection:bg-neutral-400/30 font-sans`}>
+            <style>{`
+        @keyframes reveal {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+          opacity: 0;
+          animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
 
-                {/* --- 1. HEADER: The Premium Pill --- */}
-                <div className={`flex items-center justify-between p-2 ${bgSurface} backdrop-blur-md border ${borderColor} rounded-full shadow-sm transition-all duration-500`}>
-                    {/* Left: Brand */}
-                    <div className="flex items-center gap-3 pl-4">
-                        <div className={`w-7 h-7 rounded-md border ${borderColor} flex items-center justify-center font-bold text-sm ${textPrimary}`}>
-                            Q
-                        </div>
-                        <span className="font-bold tracking-tight text-sm">QORVX</span>
-                        <span className={`${textMuted} text-[8px] uppercase tracking-widest hidden sm:block`}>Studio</span>
+            <div className="max-w-5xl mx-auto px-6 md:px-12">
+                {/* ═══════════════════════════════════════════════ */}
+                {/* HEADER                                          */}
+                {/* ═══════════════════════════════════════════════ */}
+                <header className={`flex items-center justify-between py-10 border-b ${t.border} transition-colors duration-700 ${mounted ? 'reveal' : ''}`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-[1px] ${theme === 'light' ? 'bg-[#1c1c1c]' : 'bg-[#f5f5f5]'} transition-colors duration-700`} />
+                        <span className="text-[11px] font-bold tracking-[0.3em] uppercase">Nexus</span>
                     </div>
 
-                    {/* Center: Tabs */}
-                    <div className="hidden md:flex items-center gap-1">
-                        {["Overview", "Leads", "Analytics"].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-300 ${activeTab === tab
-                                        ? `${isDark ? 'bg-white text-black' : 'bg-black text-white'} shadow-sm`
-                                        : `${textSecondary} ${hoverBg}`
-                                    }`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Right: Theme Toggle + Profile */}
-                    <div className="flex items-center gap-2 pr-2">
+                    <div className="flex items-center gap-8">
+                        <LiveClock theme={t} />
                         <button
                             onClick={toggleTheme}
-                            className={`p-2 rounded-full border ${borderColor} ${hoverBg} transition-all duration-300`}
+                            className={`w-10 h-10 rounded-full border ${t.border} flex items-center justify-center transition-all duration-300 ${t.hover}`}
+                            aria-label="Toggle theme"
                         >
-                            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                            {theme === 'light' ? (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                </svg>
+                            )}
                         </button>
-                        <div className={`w-7 h-7 rounded-full border ${borderColor} flex items-center justify-center text-[10px] font-bold`}>
-                            JD
-                        </div>
                     </div>
-                </div>
+                </header>
 
-                {/* --- 2. METRICS DECK: Massive Numbers --- */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-                    {METRICS.map((metric, idx) => (
-                        <div
-                            key={idx}
-                            className={`${bgCard} border ${borderColor} rounded-2xl p-6 transition-all duration-300 ${hoverBg}`}
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className={`${textSecondary} text-[10px] font-bold uppercase tracking-widest`}>
-                                    {metric.label}
-                                </span>
-                                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${metric.positive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {metric.positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                    {metric.growth}
-                                </span>
-                            </div>
-                            <div className={`text-4xl md:text-5xl font-bold tracking-tight mt-1.5 ${textPrimary}`}>
-                                {metric.value}
-                            </div>
+                {/* ═══════════════════════════════════════════════ */}
+                {/* HERO METRICS                                    */}
+                {/* ═══════════════════════════════════════════════ */}
+                <section className={`pt-20 pb-16 ${mounted ? 'reveal' : ''}`} style={{ animationDelay: '0.1s' }}>
+                    <p className={`text-[10px] font-bold tracking-[0.25em] uppercase mb-6 ${t.muted} transition-colors duration-700`}>
+                        Total Dispatches
+                    </p>
+                    <h1 className="text-7xl md:text-9xl font-light tracking-tighter leading-none tabular-nums">
+                        2,847
+                    </h1>
+                </section>
+
+                <section className={`grid grid-cols-1 md:grid-cols-3 gap-12 pb-20 border-b ${t.border} transition-colors duration-700 ${mounted ? 'reveal' : ''}`} style={{ animationDelay: '0.2s' }}>
+                    {[
+                        { label: 'Confirmed', value: '2,412', sub: '+12.4% from last week' },
+                        { label: 'Pending', value: '312', sub: 'In transit' },
+                        { label: 'Delivery Rate', value: '94.2%', sub: 'Industry standard' },
+                    ].map((m) => (
+                        <div key={m.label} className="group cursor-default">
+                            <p className={`text-[10px] font-bold tracking-[0.25em] uppercase mb-3 ${t.muted} transition-colors duration-700`}>{m.label}</p>
+                            <p className="text-3xl font-light tracking-tight tabular-nums mb-1">{m.value}</p>
+                            <p className={`text-[11px] ${t.muted} transition-colors duration-700`}>{m.sub}</p>
                         </div>
                     ))}
-                </div>
+                </section>
 
-                {/* --- 3. FILTER CONSOLE: Crisp & Clean --- */}
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 p-4 ${bgCard} border ${borderColor} rounded-xl transition-all duration-300`}>
-                    <div className="relative w-full sm:w-72">
-                        <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
+                {/* ═══════════════════════════════════════════════ */}
+                {/* FILTER CONSOLE                                  */}
+                {/* ═══════════════════════════════════════════════ */}
+                <section className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 py-12 ${mounted ? 'reveal' : ''}`} style={{ animationDelay: '0.3s' }}>
+                    <div className="relative w-full sm:w-80">
                         <input
                             type="text"
-                            placeholder="Search clients or properties..."
+                            placeholder="Search"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full bg-transparent pl-9 pr-4 py-2 text-sm border-b ${borderColor} ${textPrimary} placeholder:${textMuted} focus:outline-none focus:border-blue-500 transition-colors`}
+                            className={`w-full py-3 px-0 text-sm ${t.text} ${t.input} border-b ${t.border} bg-transparent focus:outline-none focus:border-neutral-500 transition-all duration-500 placeholder:${t.muted} placeholder:opacity-50`}
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className={`absolute right-0 top-3 text-[10px] font-bold uppercase tracking-widest ${t.muted} hover:${t.text} transition-colors`}
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {["All", "Confirmed", "Pending", "Dispatched"].map((status) => (
+                    <div className="flex items-center gap-1">
+                        {FILTER_TABS.map((f) => (
                             <button
-                                key={status}
-                                onClick={() => setFilterStatus(status)}
-                                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md border transition-all duration-200 ${filterStatus === status
-                                        ? `${isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'}`
-                                        : `${borderColor} ${textSecondary} ${hoverBg}`
+                                key={f}
+                                onClick={() => setFilterStatus(f)}
+                                className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${filterStatus === f ? t.activeTab : t.inactiveTab
                                     }`}
                             >
-                                {status}
+                                {f}
                             </button>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* --- 4. THE LEDGER: Architectural Table --- */}
-                <div className={`mt-8 border ${borderColor} rounded-2xl overflow-hidden transition-all duration-500`}>
+                {/* ═══════════════════════════════════════════════ */}
+                {/* LEDGER TABLE                                    */}
+                {/* ═══════════════════════════════════════════════ */}
+                <section className={`pb-24 ${mounted ? 'reveal' : ''}`} style={{ animationDelay: '0.4s' }}>
                     {/* Table Header */}
-                    <div className={`grid grid-cols-5 gap-4 px-6 py-3 ${isDark ? 'bg-neutral-900/50' : 'bg-stone-100/50'} border-b ${borderColor}`}>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-stone-400">Client</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-stone-400 hidden md:block">Email</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-stone-400">Property</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-stone-400 hidden sm:block">Date</div>
-                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-stone-400 text-right">Status</div>
+                    <div className={`grid grid-cols-12 gap-4 py-4 border-b ${t.border} transition-colors duration-700`}>
+                        <div className={`col-span-2 text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>ID</div>
+                        <div className={`col-span-3 text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>Name</div>
+                        <div className={`col-span-3 hidden md:block text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>Email</div>
+                        <div className={`col-span-2 text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>Status</div>
+                        <div className={`col-span-2 text-right text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>Time</div>
+                        <div className={`col-span-1 text-right hidden sm:block text-[10px] font-bold uppercase tracking-[0.2em] ${t.tableHeader} transition-colors duration-700`}>Value</div>
                     </div>
 
-                    {/* Table Body */}
-                    <div className="divide-y divide-neutral-800/10 dark:divide-neutral-800/50">
-                        {filteredLeads.map((lead, idx) => (
-                            <div
-                                key={lead.id}
-                                className={`grid grid-cols-5 gap-4 px-6 py-4 ${hoverBg} transition-colors duration-150`}
-                            >
-                                <div className="col-span-1 flex items-center gap-3">
-                                    <div className={`w-6 h-6 rounded-full border ${borderColor} flex items-center justify-center text-[8px] font-bold ${textSecondary}`}>
-                                        {lead.client.charAt(0)}
+                    {/* Rows */}
+                    <div>
+                        {filteredData.length > 0 ? (
+                            filteredData.map((item, i) => (
+                                <div
+                                    key={item.id}
+                                    className={`grid grid-cols-12 gap-4 py-5 border-b ${t.border} items-center ${t.rowHover} transition-all duration-300 cursor-pointer group`}
+                                    style={{ animationDelay: `${0.5 + i * 0.03}s` }}
+                                >
+                                    <div className="col-span-2">
+                                        <span className={`text-[11px] font-mono tracking-wider ${t.muted} group-hover:${t.text} transition-colors duration-300`}>
+                                            {item.id}
+                                        </span>
                                     </div>
-                                    <span className="font-medium text-sm">{lead.client}</span>
+                                    <div className="col-span-3">
+                                        <span className="text-sm font-medium tracking-tight">{item.name}</span>
+                                    </div>
+                                    <div className={`col-span-3 hidden md:block text-[11px] font-mono ${t.muted} transition-colors duration-700`}>
+                                        {item.email}
+                                    </div>
+                                    <div className="col-span-2 flex items-center gap-2">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${t.dot[item.status]} ${item.status === 'Pending' ? 'animate-pulse' : ''}`} />
+                                        <span className={`text-[11px] font-medium ${t.badge[item.status]} transition-colors duration-700`}>
+                                            {item.status}
+                                        </span>
+                                    </div>
+                                    <div className={`col-span-2 text-right text-[11px] font-mono ${t.muted} transition-colors duration-700`}>
+                                        {item.time}
+                                    </div>
+                                    <div className={`col-span-1 text-right hidden sm:block text-[11px] font-mono font-medium tabular-nums`}>
+                                        {item.value}
+                                    </div>
                                 </div>
-                                <div className="col-span-1 flex items-center text-sm font-mono text-stone-400 dark:text-neutral-500 hidden md:flex truncate">
-                                    {lead.email}
-                                </div>
-                                <div className="col-span-1 flex items-center text-sm text-stone-600 dark:text-neutral-300 truncate">
-                                    {lead.property}
-                                </div>
-                                <div className="col-span-1 flex items-center text-xs text-stone-400 dark:text-neutral-600 hidden sm:flex">
-                                    {lead.dispatched}
-                                </div>
-                                <div className="col-span-1 flex items-center justify-end">
-                                    <StatusBadge status={lead.status} />
-                                </div>
-                            </div>
-                        ))}
-
-                        {filteredLeads.length === 0 && (
-                            <div className="px-6 py-12 text-center text-sm text-stone-400 dark:text-neutral-600">
-                                No entries match your current filters.
+                            ))
+                        ) : (
+                            <div className={`py-16 text-center text-[11px] ${t.muted} tracking-widest uppercase transition-colors duration-700`}>
+                                No records found
                             </div>
                         )}
                     </div>
 
-                    {/* Table Footer */}
-                    <div className={`px-6 py-3 border-t ${borderColor} flex justify-between items-center ${isDark ? 'bg-neutral-900/30' : 'bg-stone-50/50'}`}>
-                        <span className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-neutral-600">
-                            {filteredLeads.length} Entries • Live
-                        </span>
-                        <span className="text-[8px] uppercase tracking-widest text-stone-300 dark:text-neutral-700">
-                            QORVX Core v3.2
-                        </span>
+                    {/* Footer */}
+                    <div className={`flex items-center justify-between pt-8 text-[10px] ${t.muted} uppercase tracking-[0.2em] font-bold transition-colors duration-700`}>
+                        <span>{filteredData.length} records</span>
+                        <span>Updated just now</span>
                     </div>
-                </div>
-
-                {/* Status Line */}
-                <div className="flex justify-end mt-4">
-                    <span className={`text-[8px] uppercase tracking-widest ${textMuted} flex items-center gap-2`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-600'}`}></span>
-                        System operational
-                    </span>
-                </div>
+                </section>
             </div>
         </div>
     );
