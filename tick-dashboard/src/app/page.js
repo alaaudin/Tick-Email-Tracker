@@ -1,379 +1,452 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from "react";
+import { motion, useMotionValue, useSpring, useTransform, useAnimation } from "framer-motion";
+import {
+    Search,
+    Sun,
+    Moon,
+    TrendingUp,
+    TrendingDown,
+    ArrowUpRight,
+    CheckCircle,
+    Clock,
+    Send,
+    MoreHorizontal,
+    Zap,
+    User,
+    Mail,
+    Home,
+    CalendarDays,
+    Activity,
+    Sparkles
+} from "lucide-react";
 
-// ─────────────────────────────────────────────────────────────
-// DATA
-// ─────────────────────────────────────────────────────────────
-const LEDGER_DATA = [
-    { id: 'TX-8841', name: 'Elon Musk', email: 'elon.musk@x.com', status: 'Confirmed', time: '2m ago', value: '$12,400' },
-    { id: 'TX-8842', name: 'Sundar Pichai', email: 'sundar.pichai@google.com', status: 'Pending', time: '14m ago', value: '$8,200' },
-    { id: 'TX-8843', name: 'Satya Nadella', email: 'satya.nadella@microsoft.com', status: 'Confirmed', time: '32m ago', value: '$24,000' },
-    { id: 'TX-8844', name: 'Tim Cook', email: 'tim.cook@apple.com', status: 'Confirmed', time: '1h ago', value: '$15,600' },
-    { id: 'TX-8845', name: 'Jensen Huang', email: 'jensen.huang@nvidia.com', status: 'Pending', time: '2h ago', value: '$31,200' },
-    { id: 'TX-8846', name: 'Jeff Bezos', email: 'jeff.bezos@amazon.com', status: 'Bounced', time: '3h ago', value: '$5,000' },
-    { id: 'TX-8847', name: 'Mark Zuckerberg', email: 'mark.zuckerberg@meta.com', status: 'Confirmed', time: '4h ago', value: '$9,800' },
-    { id: 'TX-8848', name: 'Larry Ellison', email: 'larry.ellison@oracle.com', status: 'Pending', time: '5h ago', value: '$18,500' },
-    { id: 'TX-8849', name: 'Tim Berners-Lee', email: 'tim@w3.org', status: 'Confirmed', time: '6h ago', value: '$2,400' },
-    { id: 'TX-8850', name: 'Linus Torvalds', email: 'linus@linux.org', status: 'Confirmed', time: '7h ago', value: '$7,100' },
+// --- MOCK DATA (Extended) ---
+const INITIAL_LEADS = [
+    { id: 1, client: "Alexander V.", email: "a.v@harbor.cap", property: "Penthouse 7B, Manhattan", dispatched: "Jul 15", status: "Confirmed" },
+    { id: 2, client: "Isabella R.", email: "ir@luxeinvest.co", property: "Beachfront Est. #12", dispatched: "Jul 15", status: "Pending" },
+    { id: 3, client: "Marcus T.", email: "m.t@crescent.com", property: "Sky Villa 43, Dubai", dispatched: "Jul 14", status: "Dispatched" },
+    { id: 4, client: "Sofia L.", email: "s.l@elitegroup.io", property: "Park Ave Triplex, NYC", dispatched: "Jul 14", status: "Confirmed" },
+    { id: 5, client: "Dmitri P.", email: "d.p@volkov.capital", property: "Hillside Mansion, LA", dispatched: "Jul 13", status: "Pending" },
+    { id: 6, client: "Elena G.", email: "e.g@mediterranean.re", property: "Coastal Villa, Mykonos", dispatched: "Jul 13", status: "Dispatched" },
+    { id: 7, client: "Nathan W.", email: "nw@westbrook.com", property: "Central Tower 22, NYC", dispatched: "Jul 12", status: "Confirmed" },
+    { id: 8, client: "Olivia M.", email: "olivia@prestige.ae", property: "Palm Jumeirah Villa", dispatched: "Jul 12", status: "Pending" },
 ];
 
-const FILTER_TABS = ['All', 'Confirmed', 'Pending'];
+const METRICS = [
+    { label: "Total Dispatches", value: 2847, growth: "+12.4%", positive: true, icon: Send },
+    { label: "Confirmed", value: 1843, growth: "+8.1%", positive: true, icon: CheckCircle },
+    { label: "Pending", value: 712, growth: "-2.3%", positive: false, icon: Clock },
+    { label: "Delivery Rate", value: 94.8, growth: "+4.7%", positive: true, icon: Activity, suffix: "%" },
+];
 
-const STATUS_CONFIG = {
-    Confirmed: { color: 'text-emerald-700', dot: 'bg-emerald-500', bg: 'bg-emerald-50' },
-    Pending: { color: 'text-amber-700', dot: 'bg-amber-400', bg: 'bg-amber-50' },
-    Bounced: { color: 'text-rose-700', dot: 'bg-rose-400', bg: 'bg-rose-50' },
-};
-
-// ─────────────────────────────────────────────────────────────
-// HOOKS
-// ─────────────────────────────────────────────────────────────
-
-function useCountUp(target, duration = 2000) {
-    const [val, setVal] = useState(0);
-    useEffect(() => {
-        const start = performance.now();
-        const tick = (now) => {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 4);
-            setVal(Math.floor(eased * target));
-            if (progress < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-    }, [target, duration]);
-    return val;
-}
-
-function useLiveClock() {
-    const [time, setTime] = useState('');
-    useEffect(() => {
-        const fmt = () => setTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
-        fmt();
-        const id = setInterval(fmt, 1000);
-        return () => clearInterval(id);
-    }, []);
-    return time;
-}
-
-// ─────────────────────────────────────────────────────────────
-// 3D TILT CARD
-// ─────────────────────────────────────────────────────────────
-function TiltCard({ children, className = '', intensity = 8 }) {
+// --- 3D TILT CARD WITH PEACEFUL ANIMATION ---
+const TiltCard = ({ children, className = "", delay = 0 }) => {
     const ref = useRef(null);
-    const [style, setStyle] = useState({});
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
 
-    const handleMove = (e) => {
-        const el = ref.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
-        const cx = r.width / 2;
-        const cy = r.height / 2;
-        const rx = ((y - cy) / cy) * -intensity;
-        const ry = ((x - cx) / cx) * intensity;
-        setStyle({
-            transform: `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) scale3d(1.02, 1.02, 1.02)`,
-            transition: 'transform 0.1s ease-out',
-        });
+    const rotateX = useTransform(y, [-150, 150], [6, -6]);
+    const rotateY = useTransform(x, [-150, 150], [-6, 6]);
+    const springConfig = { damping: 25, stiffness: 200 };
+    const springRotateX = useSpring(rotateX, springConfig);
+    const springRotateY = useSpring(rotateY, springConfig);
+
+    const handleMouseMove = (e) => {
+        const rect = ref.current.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        x.set(e.clientX - centerX);
+        y.set(e.clientY - centerY);
     };
 
-    const handleLeave = () => {
-        setStyle({
-            transform: 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-            transition: 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
-        });
+    const handleMouseLeave = () => {
+        x.set(0);
+        y.set(0);
     };
 
     return (
-        <div
+        <motion.div
             ref={ref}
-            onMouseMove={handleMove}
-            onMouseLeave={handleLeave}
-            style={style}
-            className={`transform-gpu will-change-transform ${className}`}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{
+                rotateX: springRotateX,
+                rotateY: springRotateY,
+                transformStyle: "preserve-3d",
+            }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay, duration: 0.7, type: "spring", stiffness: 80 }}
+            className={`relative bg-slate-800/40 backdrop-blur-2xl border border-slate-700/40 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-2xl p-6 transition-all duration-300 hover:border-indigo-500/30 ${className}`}
         >
             {children}
-        </div>
+        </motion.div>
     );
-}
+};
 
-// ─────────────────────────────────────────────────────────────
-// SMOOTH SPARKLINE
-// ─────────────────────────────────────────────────────────────
-function Sparkline({ data, color = '#1a1a1a' }) {
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const w = 120;
-    const h = 40;
-    const points = data.map((v, i) => {
-        const x = (i / (data.length - 1)) * w;
-        const y = h - ((v - min) / range) * (h - 8) - 4;
-        return `${x},${y}`;
-    }).join(' ');
-
-    return (
-        <svg width={w} height={h} className="overflow-visible">
-            <polyline
-                points={points}
-                fill="none"
-                stroke={color}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.25"
-            />
-            <circle cx={w} cy={h - ((data[data.length - 1] - min) / range) * (h - 8) - 4} r="2.5" fill={color} opacity="0.6" />
-        </svg>
-    );
-}
-
-// ─────────────────────────────────────────────────────────────
-// MAIN
-// ─────────────────────────────────────────────────────────────
-export default function ZenDashboard() {
-    const [filter, setFilter] = useState('All');
-    const [search, setSearch] = useState('');
-    const [visible, setVisible] = useState(false);
-    const [hoveredRow, setHoveredRow] = useState(null);
-    const clock = useLiveClock();
+// --- COUNTER ANIMATION (LIVE NUMBER) ---
+const AnimatedCounter = ({ value, suffix = "" }) => {
+    const [count, setCount] = useState(0);
+    const controls = useAnimation();
 
     useEffect(() => {
-        const t = setTimeout(() => setVisible(true), 100);
-        return () => clearTimeout(t);
-    }, []);
-
-    const filtered = useMemo(() => {
-        return LEDGER_DATA.filter((d) => {
-            const f = filter === 'All' || d.status === filter;
-            const s = !search || [d.name, d.email, d.id].some((x) => x.toLowerCase().includes(search.toLowerCase()));
-            return f && s;
-        });
-    }, [filter, search]);
-
-    const total = useCountUp(2847);
-    const conf = useCountUp(2412);
-    const pend = useCountUp(312);
-    const rate = useCountUp(94);
-
-    const metrics = [
-        { label: 'Total Dispatches', value: total.toLocaleString(), sub: '+12.4% from last week', spark: [20, 28, 22, 35, 30, 42, 38, 50, 48, 55] },
-        { label: 'Confirmed', value: conf.toLocaleString(), sub: '2,412 successful', spark: [15, 20, 18, 25, 22, 30, 28, 35, 32, 40] },
-        { label: 'Pending', value: pend.toLocaleString(), sub: 'Awaiting delivery', spark: [5, 8, 6, 10, 8, 12, 10, 15, 12, 18] },
-        { label: 'Delivery Rate', value: `${rate}%`, sub: 'Above benchmark', spark: [70, 72, 75, 78, 80, 82, 85, 88, 90, 94] },
-    ];
+        let start = 0;
+        const duration = 2000;
+        const step = Math.max(1, Math.floor(value / 60));
+        const interval = setInterval(() => {
+            start += step;
+            if (start >= value) {
+                setCount(value);
+                clearInterval(interval);
+            } else {
+                setCount(start);
+            }
+        }, duration / 60);
+        return () => clearInterval(interval);
+    }, [value]);
 
     return (
-        <div className="min-h-screen bg-[#faf8f5] text-[#1a1a1a] font-sans selection:bg-[#1a1a1a] selection:text-[#faf8f5] overflow-x-hidden">
-            <style>{`
-        @keyframes float {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(40px, -30px) scale(1.05); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-        }
-        @keyframes breathe {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.05); }
-        }
-        @keyframes rise {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes lineGrow {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
-        .anim-rise {
-          opacity: 0;
-          animation: rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .anim-delay-1 { animation-delay: 0.1s; }
-        .anim-delay-2 { animation-delay: 0.2s; }
-        .anim-delay-3 { animation-delay: 0.3s; }
-        .anim-delay-4 { animation-delay: 0.4s; }
-        .anim-delay-5 { animation-delay: 0.5s; }
-        .anim-delay-6 { animation-delay: 0.6s; }
-      `}</style>
+        <span className="text-4xl md:text-5xl font-bold tracking-tight text-white">
+            {typeof count === 'number' ? count.toLocaleString() : count}{suffix}
+        </span>
+    );
+};
 
-            {/* ─── LIVING BACKGROUND ─── */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#f5e6d3] opacity-40 blur-[120px]" style={{ animation: 'float 20s ease-in-out infinite' }} />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] rounded-full bg-[#e8ddd5] opacity-40 blur-[120px]" style={{ animation: 'float 25s ease-in-out infinite 5s' }} />
-                <div className="absolute top-[40%] left-[60%] w-[400px] h-[400px] rounded-full bg-[#d4c4b5] opacity-30 blur-[100px]" style={{ animation: 'float 18s ease-in-out infinite 10s' }} />
+// --- MAIN DASHBOARD ---
+export default function DashboardPage() {
+    const [activeTab, setActiveTab] = useState("Overview");
+    const [filterStatus, setFilterStatus] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isHovering, setIsHovering] = useState(false);
+
+    const filteredLeads = INITIAL_LEADS.filter((item) => {
+        const matchesStatus = filterStatus === "All" || item.status === filterStatus;
+        const matchesSearch =
+            item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.email.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesStatus && matchesSearch;
+    });
+
+    // --- STATUS BADGE (Breathing Glow) ---
+    const StatusBadge = ({ status }) => {
+        const base = "px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border flex items-center gap-1.5";
+
+        if (status === "Confirmed") {
+            return (
+                <span className={`${base} bg-emerald-500/10 text-emerald-300 border-emerald-500/30`}>
+                    <span className="relative w-1.5 h-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
+                    </span>
+                    Confirmed
+                </span>
+            );
+        } else if (status === "Pending") {
+            return (
+                <span className={`${base} bg-amber-500/10 text-amber-300 border-amber-500/30`}>
+                    <span className="relative w-1.5 h-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-pulse"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400"></span>
+                    </span>
+                    Pending
+                </span>
+            );
+        } else {
+            return (
+                <span className={`${base} bg-blue-500/10 text-blue-300 border-blue-500/30`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Dispatched
+                </span>
+            );
+        }
+    };
+
+    return (
+        <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 overflow-x-hidden font-sans antialiased selection:bg-indigo-500/30 p-6 md:p-8">
+
+            {/* --- PEACEFUL ANIMATED BACKGROUND (Soft Nebula) --- */}
+            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+                <motion.div
+                    animate={{
+                        x: ["0%", "10%", "-5%", "0%"],
+                        y: ["0%", "-10%", "5%", "0%"],
+                        scale: [1, 1.1, 0.9, 1]
+                    }}
+                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-[-30%] left-[-20%] w-[70rem] h-[70rem] bg-indigo-600/10 rounded-full blur-3xl"
+                />
+                <motion.div
+                    animate={{
+                        x: ["0%", "-10%", "10%", "0%"],
+                        y: ["0%", "10%", "-5%", "0%"],
+                        scale: [1, 0.9, 1.1, 1]
+                    }}
+                    transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+                    className="absolute bottom-[-30%] right-[-20%] w-[60rem] h-[60rem] bg-blue-600/10 rounded-full blur-3xl"
+                />
+                <motion.div
+                    animate={{ opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute top-[40%] left-[40%] w-[30rem] h-[30rem] bg-purple-500/5 rounded-full blur-3xl"
+                />
             </div>
 
-            <div className="relative z-10 max-w-6xl mx-auto px-8 md:px-16">
+            <div className="relative max-w-7xl mx-auto space-y-8">
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* HEADER                                    */}
-                {/* ═══════════════════════════════════════════ */}
-                <header className={`flex items-center justify-between py-12 ${visible ? 'anim-rise' : ''}`}>
-                    <div className="flex items-center gap-4">
-                        <div className="w-8 h-[1px] bg-[#1a1a1a]" />
-                        <span className="text-[10px] font-bold tracking-[0.35em] uppercase text-[#8a8a8a]">Nexus</span>
-                    </div>
-                    <div className="flex items-center gap-6">
-                        <span className="font-mono text-[11px] text-[#8a8a8a] tracking-widest">{clock}</span>
-                        <div className="w-8 h-8 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center text-[10px] font-bold">AC</div>
-                    </div>
-                </header>
+                {/* --- 1. 3D FLOATING HEADER (Premium Pill) --- */}
+                <motion.div
+                    initial={{ y: -30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.8, type: "spring", stiffness: 100 }}
+                    className="sticky top-4 z-50 w-full"
+                >
+                    <div className="bg-slate-800/50 backdrop-blur-2xl border border-slate-700/40 shadow-[0_20px_60px_rgba(0,0,0,0.5)] rounded-[2rem] px-4 py-2 flex flex-wrap items-center justify-between gap-4">
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* HERO                                      */}
-                {/* ═══════════════════════════════════════════ */}
-                <section className={`pt-8 pb-20 ${visible ? 'anim-rise anim-delay-1' : ''}`}>
-                    <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#8a8a8a] mb-8">Overview</p>
-                    <h1 className="text-7xl md:text-[10rem] font-extralight tracking-tighter leading-[0.85] tabular-nums text-[#1a1a1a]">
-                        {total.toLocaleString()}
-                    </h1>
-                    <div className="flex items-center gap-4 mt-8">
-                        <div className="h-px flex-1 bg-[#1a1a1a] origin-left" style={{ animation: visible ? 'lineGrow 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards' : 'none', transform: 'scaleX(0)' }} />
-                        <p className="text-[11px] text-[#8a8a8a] tracking-wide font-medium">Total dispatches across all channels</p>
-                    </div>
-                </section>
+                        {/* Brand */}
+                        <div className="flex items-center gap-3 pl-2">
+                            <motion.div
+                                whileHover={{ scale: 1.05, rotate: -3 }}
+                                className="relative w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl shadow-[0_8px_24px_rgba(99,102,241,0.3)] flex items-center justify-center font-black text-white text-lg"
+                            >
+                                Q
+                                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-800 shadow-[0_0_12px_rgba(52,211,153,0.4)]"></div>
+                            </motion.div>
+                            <div>
+                                <span className="text-white font-bold tracking-tight text-lg">QORVX</span>
+                                <span className="text-indigo-300/60 text-[8px] uppercase tracking-widest block -mt-0.5">Zenith Studio</span>
+                            </div>
+                        </div>
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* 3D METRICS                                */}
-                {/* ═══════════════════════════════════════════ */}
-                <section className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20 ${visible ? 'anim-rise anim-delay-2' : ''}`}>
-                    {metrics.map((m, i) => (
-                        <TiltCard key={m.label} intensity={6}>
-                            <div className="group relative bg-white/60 backdrop-blur-xl border border-white/80 rounded-3xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_40px_rgba(0,0,0,0.06)] transition-shadow duration-700 cursor-default overflow-hidden">
-                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                    <Sparkline data={m.spark} />
+                        {/* Live Activity Pulse */}
+                        <div className="hidden lg:flex items-center gap-4 bg-slate-900/50 px-4 py-1.5 rounded-full border border-slate-700/30">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="relative w-2 h-2">
+                                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                                </span>
+                                Live
+                            </span>
+                            <div className="w-px h-4 bg-slate-700"></div>
+                            <motion.div
+                                animate={{ opacity: [0.5, 1, 0.5] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="flex items-center gap-1"
+                            >
+                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                <span className="text-indigo-300 text-xs font-mono font-bold">12.4k</span>
+                            </motion.div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.4)]">
+                            {["Overview", "Leads", "Analytics"].map((tab) => (
+                                <motion.button
+                                    key={tab}
+                                    whileTap={{ scale: 0.92 }}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-5 py-1.5 text-sm font-semibold tracking-tight rounded-full transition-all duration-300 ${activeTab === tab
+                                        ? "bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-[0_4px_16px_rgba(99,102,241,0.4)]"
+                                        : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                                        }`}
+                                >
+                                    {tab}
+                                </motion.button>
+                            ))}
+                        </div>
+
+                        {/* Profile */}
+                        <div className="flex items-center gap-2 pr-2">
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                className="p-2 rounded-full border border-slate-700/30 hover:bg-slate-700/30 transition-all"
+                            >
+                                <Sun className="w-4 h-4 text-slate-400" />
+                            </motion.button>
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 shadow-[0_4px_16px_rgba(99,102,241,0.3)] flex items-center justify-center text-white text-xs font-bold border border-white/10">
+                                JD
+                            </div>
+                            <MoreHorizontal className="w-4 h-4 text-slate-500 cursor-pointer hover:text-white transition" />
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* --- 2. 3D TILT METRICS DECK (Peaceful Numbers) --- */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                    {METRICS.map((metric, idx) => (
+                        <TiltCard key={idx} delay={idx * 0.08}>
+                            <div className="flex items-start justify-between">
+                                <div className="p-2.5 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
+                                    <metric.icon className="w-4 h-4 text-indigo-400" />
                                 </div>
-                                <p className="text-[9px] font-bold tracking-[0.25em] uppercase text-[#8a8a8a] mb-6">{m.label}</p>
-                                <p className="text-4xl font-extralight tracking-tight tabular-nums mb-2">{m.value}</p>
-                                <p className="text-[11px] text-[#8a8a8a] tracking-wide">{m.sub}</p>
-                                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#1a1a1a]/10 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700" />
+                                <span className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 px-2 py-0.5 rounded-full border ${metric.positive
+                                    ? "text-emerald-300 border-emerald-500/20 bg-emerald-500/5"
+                                    : "text-rose-300 border-rose-500/20 bg-rose-500/5"
+                                    }`}>
+                                    {metric.positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                    {metric.growth}
+                                </span>
+                            </div>
+                            <div className="mt-3" style={{ transform: "translateZ(30px)" }}>
+                                <span className="text-slate-400 text-[10px] font-medium uppercase tracking-widest">{metric.label}</span>
+                                <AnimatedCounter value={metric.value} suffix={metric.suffix || ""} />
+                            </div>
+                            {/* Gentle progress bar */}
+                            <div className="mt-3 h-0.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(100, (metric.value / 3000) * 100)}%` }}
+                                    transition={{ delay: 0.6, duration: 1.5, ease: "easeOut" }}
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-blue-400 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.2)]"
+                                />
                             </div>
                         </TiltCard>
                     ))}
-                </section>
+                </div>
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* DIVIDER                                   */}
-                {/* ═══════════════════════════════════════════ */}
-                <div className={`h-px bg-[#1a1a1a]/10 mb-16 ${visible ? 'anim-rise anim-delay-3' : ''}`} />
-
-                {/* ═══════════════════════════════════════════ */}
-                {/* FILTER CONSOLE                            */}
-                {/* ═══════════════════════════════════════════ */}
-                <section className={`flex flex-col sm:flex-row items-start sm:items-end justify-between gap-8 mb-12 ${visible ? 'anim-rise anim-delay-4' : ''}`}>
-                    <div className="relative w-full sm:w-96 group">
+                {/* --- 3. FILTER CONSOLE (Glowing Search) --- */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.6 }}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-2xl"
+                >
+                    <div className="relative w-full sm:w-80 group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Search transactions..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-transparent border-b border-[#1a1a1a]/15 py-3 pr-8 text-sm text-[#1a1a1a] placeholder:text-[#8a8a8a]/50 focus:outline-none focus:border-[#1a1a1a]/40 transition-colors duration-500"
+                            placeholder="Search clients, properties, emails..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-900/60 text-white placeholder:text-slate-500 pl-10 pr-4 py-2.5 rounded-xl border border-slate-700/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)] focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/40 transition-all duration-300 text-sm"
                         />
-                        <svg className="absolute right-0 top-3 w-4 h-4 text-[#8a8a8a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        {search && (
-                            <button onClick={() => setSearch('')} className="absolute right-6 top-3 text-[9px] font-bold uppercase tracking-widest text-[#8a8a8a] hover:text-[#1a1a1a] transition-colors">
-                                Clear
-                            </button>
-                        )}
+                        <div className="absolute inset-0 rounded-xl bg-indigo-500/0 group-focus-within:bg-indigo-500/5 blur-xl -z-10 transition-all duration-500"></div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                        {FILTER_TABS.map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-500 ${filter === f
-                                        ? 'bg-[#1a1a1a] text-[#faf8f5] shadow-lg'
-                                        : 'text-[#8a8a8a] hover:text-[#1a1a1a]'
+                    <div className="flex items-center gap-2 bg-slate-900/30 p-1 rounded-xl shadow-[inset_0_2px_8px_rgba(0,0,0,0.3)] flex-wrap">
+                        {["All", "Confirmed", "Pending", "Dispatched"].map((status) => (
+                            <motion.button
+                                key={status}
+                                whileTap={{ scale: 0.92 }}
+                                onClick={() => setFilterStatus(status)}
+                                className={`px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all duration-300 border ${filterStatus === status
+                                    ? "bg-gradient-to-r from-indigo-500 to-blue-500 text-white border-indigo-500/50 shadow-[0_4px_16px_rgba(99,102,241,0.3)]"
+                                    : "text-slate-400 border-transparent hover:bg-slate-700/50 hover:text-white"
                                     }`}
                             >
-                                {f}
-                            </button>
+                                {status}
+                            </motion.button>
                         ))}
                     </div>
-                </section>
+                </motion.div>
 
-                {/* ═══════════════════════════════════════════ */}
-                {/* LEDGER                                    */}
-                {/* ═══════════════════════════════════════════ */}
-                <section className={`pb-24 ${visible ? 'anim-rise anim-delay-5' : ''}`}>
-                    {/* Table Header */}
-                    <div className="grid grid-cols-12 gap-4 py-4 border-b border-[#1a1a1a]/10">
-                        {['ID', 'Recipient', 'Email', 'Status', 'Time', 'Value'].map((h, i) => (
-                            <div
-                                key={h}
-                                className={`text-[9px] font-bold tracking-[0.2em] uppercase text-[#8a8a8a] ${i === 0 ? 'col-span-2' : i === 1 ? 'col-span-3' : i === 2 ? 'col-span-3 hidden md:block' : i === 3 ? 'col-span-2' : i === 4 ? 'col-span-2 text-right' : 'col-span-1 text-right hidden sm:block'}`}
+                {/* --- 4. 3D LEDGER (Staggered, Breathing Rows) --- */}
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.6 }}
+                    className="bg-slate-800/30 backdrop-blur-2xl border border-slate-700/40 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl overflow-hidden"
+                >
+                    {/* Header */}
+                    <div className="grid grid-cols-5 gap-4 px-6 py-4 bg-slate-900/50 border-b border-slate-700/40">
+                        <div className="col-span-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            <User className="w-3 h-3" /> Client
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 hidden md:flex items-center gap-2">
+                            <Mail className="w-3 h-3" /> Email
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                            <Home className="w-3 h-3" /> Property
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 hidden sm:flex items-center gap-2">
+                            <CalendarDays className="w-3 h-3" /> Date
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right flex items-center justify-end gap-2">
+                            <Activity className="w-3 h-3" /> Status
+                        </div>
+                    </div>
+
+                    {/* Body */}
+                    <div className="divide-y divide-slate-700/30 max-h-[480px] overflow-y-auto custom-scroll">
+                        {filteredLeads.map((lead, idx) => (
+                            <motion.div
+                                key={lead.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.03, duration: 0.4, ease: "easeOut" }}
+                                className="grid grid-cols-5 gap-4 px-6 py-4 transition-all duration-200 hover:bg-slate-700/20 hover:border-l-2 hover:border-l-indigo-500 border-b border-slate-700/20 last:border-b-0 group"
                             >
-                                {h}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Rows */}
-                    <div className="relative">
-                        {filtered.map((item, i) => {
-                            const cfg = STATUS_CONFIG[item.status];
-                            const isHovered = hoveredRow === item.id;
-                            return (
-                                <div
-                                    key={item.id}
-                                    onMouseEnter={() => setHoveredRow(item.id)}
-                                    onMouseLeave={() => setHoveredRow(null)}
-                                    className="grid grid-cols-12 gap-4 py-5 border-b border-[#1a1a1a]/5 items-center cursor-pointer transition-all duration-500 relative group"
-                                    style={{
-                                        opacity: 0,
-                                        animation: `rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.6 + i * 0.04}s forwards`,
-                                    }}
-                                >
-                                    {/* Hover background */}
-                                    <div className={`absolute inset-0 bg-[#f0ede8] rounded-xl transition-all duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
-
-                                    <div className="col-span-2 relative z-10">
-                                        <span className="text-[10px] font-mono tracking-wider text-[#8a8a8a] group-hover:text-[#1a1a1a] transition-colors duration-300">
-                                            {item.id}
-                                        </span>
+                                <div className="col-span-1 flex items-center gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-[9px] font-bold text-white shadow-inner group-hover:shadow-indigo-500/20 transition">
+                                        {lead.client.charAt(0)}
                                     </div>
-                                    <div className="col-span-3 relative z-10">
-                                        <span className="text-sm font-medium tracking-tight text-[#1a1a1a]">{item.name}</span>
-                                    </div>
-                                    <div className="col-span-3 hidden md:block relative z-10">
-                                        <span className="text-[11px] font-mono text-[#8a8a8a]">{item.email}</span>
-                                    </div>
-                                    <div className="col-span-2 relative z-10 flex items-center gap-2">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${item.status === 'Pending' ? 'animate-pulse' : ''}`} />
-                                        <span className={`text-[10px] font-semibold tracking-wide ${cfg.color}`}>{item.status}</span>
-                                    </div>
-                                    <div className="col-span-2 relative z-10 text-right">
-                                        <span className="text-[10px] font-mono text-[#8a8a8a] tracking-wide">{item.time}</span>
-                                    </div>
-                                    <div className="col-span-1 relative z-10 text-right hidden sm:block">
-                                        <span className="text-[11px] font-mono font-medium tabular-nums text-[#1a1a1a]">{item.value}</span>
-                                    </div>
+                                    <span className="text-white font-medium text-sm truncate">{lead.client}</span>
                                 </div>
-                            );
-                        })}
-
-                        {filtered.length === 0 && (
-                            <div className="py-20 text-center">
-                                <p className="text-[11px] text-[#8a8a8a] tracking-widest uppercase">No records found</p>
+                                <div className="col-span-1 flex items-center text-slate-400 text-sm font-mono tracking-tight hidden md:flex truncate">
+                                    {lead.email}
+                                </div>
+                                <div className="col-span-1 flex items-center text-slate-300 text-sm truncate">
+                                    <ArrowUpRight className="w-3 h-3 text-indigo-400 mr-1.5 flex-shrink-0" />
+                                    {lead.property}
+                                </div>
+                                <div className="col-span-1 flex items-center text-slate-500 text-xs font-medium hidden sm:flex">
+                                    {lead.dispatched}
+                                </div>
+                                <div className="col-span-1 flex items-center justify-end">
+                                    <StatusBadge status={lead.status} />
+                                </div>
+                            </motion.div>
+                        ))}
+                        {filteredLeads.length === 0 && (
+                            <div className="px-6 py-16 text-center text-slate-400 text-sm">
+                                No records match your criteria.
                             </div>
                         )}
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-12 text-[9px] text-[#8a8a8a] uppercase tracking-[0.2em] font-bold">
-                        <span>{filtered.length} of {LEDGER_DATA.length} records</span>
-                        <span className="flex items-center gap-2">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                            Live
-                        </span>
+                    <div className="px-6 py-3 bg-slate-900/40 border-t border-slate-700/30 shadow-[inset_0_8px_20px_rgba(0,0,0,0.2)] flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                <span className="text-white font-bold">{filteredLeads.length}</span> Entries
+                            </span>
+                            <div className="w-16 h-0.5 bg-slate-700/50 rounded-full">
+                                <div className="w-3/4 h-full bg-gradient-to-r from-indigo-500 to-blue-400 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[8px] uppercase tracking-widest text-slate-500">QORVX • Zenith</span>
+                            <Zap className="w-3 h-3 text-indigo-400" />
+                        </div>
                     </div>
-                </section>
+                </motion.div>
 
+                {/* System Status */}
+                <div className="flex justify-end mt-2">
+                    <motion.div
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="text-[10px] uppercase tracking-widest text-slate-500 flex items-center gap-3"
+                    >
+                        <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.4)]"></span>
+                            All systems nominal
+                        </span>
+                        <span className="w-px h-3 bg-slate-700"></span>
+                        <span className="font-mono">v3.2.1</span>
+                    </motion.div>
+                </div>
             </div>
+
+            {/* Custom Scroll */}
+            <style jsx>{`
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+      `}</style>
         </div>
     );
 }
