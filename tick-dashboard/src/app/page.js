@@ -382,7 +382,7 @@ export default function DashboardPage() {
                         <span className="w-1 h-1 bg-zinc-700 rounded-full"></span>
                         <span className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-                            All Systems Nominal
+                            All Systems Nomiinal
                         </span>
                     </div>
                 </div>
