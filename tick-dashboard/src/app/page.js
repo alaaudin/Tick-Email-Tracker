@@ -1,140 +1,265 @@
-'use client'
+"use client";
 
-import React from 'react'
+import { useState } from "react";
 
-export default function PeakDashboard() {
-    // Hardcoded Telemetry Data
-    const ledger = [
-        { id: 'TX-001', to: 'elon@tesla.com', status: 'CONFIRMED', opens: 3, loc: 'Austin, TX', time: '10:42 AM' },
-        { id: 'TX-002', to: 'sundar@google.com', status: 'CONFIRMED', opens: 7, loc: 'Mountain View, CA', time: '10:15 AM' },
-        { id: 'TX-003', to: 'satya@microsoft.com', status: 'PENDING', opens: 0, loc: 'Redmond, WA', time: '09:50 AM' },
-        { id: 'TX-004', to: 'tim@apple.com', status: 'CONFIRMED', opens: 12, loc: 'Cupertino, CA', time: '09:11 AM' },
-        { id: 'TX-005', to: 'jensen@nvidia.com', status: 'CONFIRMED', opens: 5, loc: 'Santa Clara, CA', time: '08:45 AM' },
-    ]
+// --- MOCK DATA ---
+const INITIAL_LEADS = [
+    { id: 1, client: "Alexander V.", email: "a.v@harborcap.com", property: "Penthouse 7B, Manhattan", dispatched: "2025-07-15", status: "Confirmed" },
+    { id: 2, client: "Isabella R.", email: "ir@luxeinvest.co", property: "Beachfront Est. #12, Malibu", dispatched: "2025-07-15", status: "Pending" },
+    { id: 3, client: "Marcus T.", email: "marcus.t@crescent.com", property: "Sky Villa 43, Dubai", dispatched: "2025-07-14", status: "Dispatched" },
+    { id: 4, client: "Sofia L.", email: "sofia.l@elitegroup.io", property: "Park Ave Triplex, NYC", dispatched: "2025-07-14", status: "Confirmed" },
+    { id: 5, client: "Dmitri P.", email: "d.p@volkov.capital", property: "Hillside Mansion, LA", dispatched: "2025-07-13", status: "Pending" },
+    { id: 6, client: "Elena G.", email: "e.g@mediterranean.re", property: "Coastal Villa, Mykonos", dispatched: "2025-07-13", status: "Dispatched" },
+    { id: 7, client: "Nathan W.", email: "nw@westbrook.com", property: "Central Tower 22, NYC", dispatched: "2025-07-12", status: "Confirmed" },
+    { id: 8, client: "Olivia M.", email: "olivia@prestige.ae", property: "Palm Jumeirah Villa", dispatched: "2025-07-12", status: "Pending" },
+];
 
-    // Generating a random simulated waveform
-    const waveform = Array.from({ length: 45 }).map(() => Math.floor(Math.random() * 100))
+// --- METRICS DATA ---
+const METRICS = [
+    { label: "Total Dispatches", value: "2,847", growth: "+12.4%", positive: true },
+    { label: "Confirmed", value: "1,843", growth: "+8.1%", positive: true },
+    { label: "Pending", value: "712", growth: "-2.3%", positive: false },
+    { label: "Delivery Rate", value: "94.8%", growth: "+4.7%", positive: true },
+];
+
+export default function DashboardPage() {
+    // --- STATES ---
+    const [activeTab, setActiveTab] = useState("Overview");
+    const [filterStatus, setFilterStatus] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // --- FILTER LOGIC ---
+    const filteredLeads = INITIAL_LEADS.filter((item) => {
+        const matchesStatus = filterStatus === "All" || item.status === filterStatus;
+        const matchesSearch =
+            item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.email.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesStatus && matchesSearch;
+    });
+
+    // --- HELPER FOR STATUS BADGE ---
+    const StatusBadge = ({ status }) => {
+        const base =
+            "px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border shadow-[2px_2px_4px_rgba(0,0,0,0.3),inset_-2px_-2px_4px_rgba(255,255,255,0.05)]";
+
+        switch (status) {
+            case "Confirmed":
+                return (
+                    <span
+                        className={`${base} bg-emerald-900/60 text-emerald-300 border-emerald-500/30 shadow-emerald-900/20`}
+                    >
+                        Confirmed
+                    </span>
+                );
+            case "Pending":
+                return (
+                    <span
+                        className={`${base} bg-amber-900/60 text-amber-300 border-amber-500/30 shadow-amber-900/20`}
+                    >
+                        Pending
+                    </span>
+                );
+            default:
+                return (
+                    <span
+                        className={`${base} bg-blue-900/60 text-blue-300 border-blue-500/30 shadow-blue-900/20`}
+                    >
+                        Dispatched
+                    </span>
+                );
+        }
+    };
+
+    // --- 3D BUTTON PRESS (shared style) ---
+    const tabButtonBase =
+        "px-5 py-2 text-sm font-semibold tracking-tight rounded-full transition-all duration-200 active:translate-y-1 active:shadow-inner";
+
+    const filterButtonBase =
+        "px-4 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-200 active:translate-y-1 active:shadow-inner border";
 
     return (
-        <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8 font-sans antialiased selection:bg-blue-600/30">
+            <div className="max-w-7xl mx-auto space-y-8">
 
-            {/* 3D AMBIENT BACKGROUND GLOWS (The magic sauce) */}
-            <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-emerald-500/15 blur-[120px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none"></div>
+                {/* --- 1. 3D FLOATING HEADER --- */}
+                <div className="sticky top-4 z-50 w-full">
+                    <div className="bg-slate-800/60 backdrop-blur-xl border-t border-l border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[2rem] px-4 py-2 flex items-center justify-between">
 
-            <div className="max-w-[1200px] mx-auto px-6 md:px-12 py-12 relative z-10">
-
-                {/* 1. RAZOR-SHARP HEADER */}
-                <header className="flex justify-between items-center pb-8 border-b border-white/5 mb-10">
-                    <div className="flex items-center gap-3">
-                        {/* 3D App Icon */}
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-b from-zinc-700 to-zinc-950 border border-zinc-700 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">T</span>
-                        </div>
-                        <div className="text-xl font-medium tracking-tight text-white">TICKK</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse"></span>
-                            <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">Live Node</span>
-                        </div>
-                    </div>
-                </header>
-
-                {/* 2. THE 3D BENTO GRID (Metrics & Chart) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-
-                    {/* Main Hero Card (2 Columns Wide) - Deep 3D Bevel */}
-                    <div className="md:col-span-2 rounded-2xl bg-[#0a0a0c] border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] p-8 flex flex-col justify-between relative overflow-hidden group">
-                        {/* Subtle surface gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none"></div>
-
-                        <div className="relative z-10">
-                            <div className="text-[11px] font-mono tracking-[0.2em] text-zinc-500 uppercase mb-2">Total Outbound Volume</div>
-                            <div className="text-7xl font-light tracking-tighter text-white mb-8 flex items-baseline gap-2">
-                                2,847
-                                <span className="text-lg font-normal text-emerald-500 tracking-normal flex items-center">
-                                    <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                                    +14%
-                                </span>
+                        {/* Logo / Brand */}
+                        <div className="flex items-center gap-2 pl-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-xl shadow-[inset_0_-4px_0_rgba(0,0,0,0.3),0_4px_12px_rgba(37,99,235,0.4)] flex items-center justify-center font-black text-white text-sm">
+                                Q
                             </div>
+                            <span className="text-white font-bold tracking-tight text-lg">QORVX</span>
+                            <span className="text-zinc-400 text-[10px] uppercase tracking-widest ml-1 hidden sm:inline">
+                                Enterprise
+                            </span>
                         </div>
 
-                        {/* 3D Waveform Chart */}
-                        <div className="h-20 w-full flex items-end gap-1 relative z-10">
-                            {waveform.map((val, i) => (
-                                <div
-                                    key={i}
-                                    className="flex-1 bg-gradient-to-t from-emerald-500/20 to-emerald-400/80 rounded-t-[2px] transition-all duration-300 group-hover:from-emerald-400/40 group-hover:to-emerald-300"
-                                    style={{ height: `${Math.max(15, val)}%` }}
-                                ></div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Side Metrics (Stacked) */}
-                    <div className="flex flex-col gap-6">
-                        <div className="flex-1 rounded-2xl bg-[#0a0a0c] border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] p-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-[40px] rounded-full"></div>
-                            <div className="text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase mb-2">Confirmed</div>
-                            <div className="text-4xl font-light tracking-tight text-white">2,631</div>
-                        </div>
-                        <div className="flex-1 rounded-2xl bg-[#0a0a0c] border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] p-6 relative overflow-hidden">
-                            <div className="text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase mb-2">Pending</div>
-                            <div className="text-4xl font-light tracking-tight text-zinc-400">216</div>
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* 3. THE PRECISION LEDGER (3D Table View) */}
-                <div className="rounded-2xl bg-[#0a0a0c] border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] overflow-hidden">
-
-                    {/* Table Toolbar */}
-                    <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-                        <div className="text-[11px] font-mono tracking-[0.2em] text-zinc-400 uppercase">Recent Dispatches</div>
-                        <div className="flex gap-2">
-                            {['All', 'Confirmed', 'Pending'].map(tab => (
-                                <button key={tab} className={`px-3 py-1 rounded-md text-[10px] font-mono uppercase tracking-widest border ${tab === 'All' ? 'bg-zinc-800 text-white border-zinc-700 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]' : 'bg-transparent text-zinc-500 border-transparent hover:text-zinc-300'}`}>
+                        {/* Tabs */}
+                        <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]">
+                            {["Overview", "Leads", "Analytics"].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`${tabButtonBase} ${activeTab === tab
+                                            ? "bg-blue-600 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.3),0_4px_12px_rgba(37,99,235,0.5)]"
+                                            : "text-zinc-400 hover:text-white hover:bg-slate-700/50"
+                                        }`}
+                                >
                                     {tab}
                                 </button>
                             ))}
                         </div>
+
+                        {/* Right actions */}
+                        <div className="flex items-center gap-3 pr-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-[0_4px_12px_rgba(37,99,235,0.5)] flex items-center justify-center text-white text-xs font-bold border border-white/10">
+                                JD
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- 2. ISOMETRIC METRICS DECK --- */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {METRICS.map((metric, idx) => (
+                        <div
+                            key={idx}
+                            className="bg-slate-800/50 backdrop-blur-xl border-t border-l border-white/10 shadow-[8px_8px_16px_rgba(0,0,0,0.4),_-8px_-8px_16px_rgba(255,255,255,0.02)] rounded-2xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)]"
+                        >
+                            <div className="flex justify-between items-start">
+                                <span className="text-zinc-400 text-xs font-medium uppercase tracking-widest">
+                                    {metric.label}
+                                </span>
+                                <span
+                                    className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] border ${metric.positive
+                                            ? "bg-emerald-900/30 text-emerald-300 border-emerald-500/20"
+                                            : "bg-rose-900/30 text-rose-300 border-rose-500/20"
+                                        }`}
+                                >
+                                    {metric.growth}
+                                </span>
+                            </div>
+                            <div className="mt-2 text-4xl font-bold tracking-tight text-white drop-shadow-sm">
+                                {metric.value}
+                            </div>
+                            {/* 3D Progress bar mock */}
+                            <div className="mt-4 h-1 w-full bg-slate-700/50 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]">
+                                <div
+                                    className="h-full bg-blue-600 rounded-full shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
+                                    style={{ width: `${Math.min(100, idx * 20 + 40)}%` }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* --- 3. DYNAMIC FILTER CONSOLE --- */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800/30 backdrop-blur-sm border-t border-l border-white/5 shadow-[6px_6px_12px_rgba(0,0,0,0.3)] rounded-2xl p-4">
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-72">
+                        <input
+                            type="text"
+                            placeholder="Search client, property, email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-900/50 text-white placeholder:text-zinc-500 pl-4 pr-4 py-2 rounded-xl border border-white/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_1px_0_rgba(255,255,255,0.05)] focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-transparent transition-all text-sm"
+                        />
                     </div>
 
-                    {/* Table Rows */}
-                    <div className="flex flex-col">
-                        {ledger.map((item, idx) => (
-                            <div
-                                key={item.id}
-                                className="group flex items-center justify-between px-6 py-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                    {/* Filter Buttons */}
+                    <div className="flex items-center gap-2 bg-slate-900/30 p-1 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
+                        {["All", "Confirmed", "Pending", "Dispatched"].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={`${filterButtonBase} ${filterStatus === status
+                                        ? "bg-blue-600 text-white border-blue-700 shadow-[inset_0_-3px_0_rgba(0,0,0,0.3),0_4px_12px_rgba(37,99,235,0.4)]"
+                                        : "text-zinc-400 border-transparent hover:bg-slate-700/50 hover:text-white"
+                                    }`}
                             >
-                                <div className="flex items-center gap-4 w-1/3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-b from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center text-[10px] font-mono text-zinc-400 shadow-sm">
-                                        {item.to.charAt(0).toUpperCase()}
-                                    </div>
-                                    <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">{item.to}</span>
-                                </div>
-
-                                <div className="w-1/4 flex items-center">
-                                    <div className={`px-2.5 py-1 rounded-full text-[9px] font-mono tracking-widest border ${item.status === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                                        {item.status}
-                                    </div>
-                                </div>
-
-                                <div className="w-1/4 text-[11px] font-mono text-zinc-500 hidden md:block">
-                                    {item.loc}
-                                </div>
-
-                                <div className="w-1/6 text-[11px] font-mono text-zinc-500 text-right">
-                                    {item.time}
-                                </div>
-                            </div>
+                                {status}
+                            </button>
                         ))}
                     </div>
                 </div>
 
+                {/* --- 4. ENTERPRISE 3D LEDGER (TABLE) --- */}
+                <div className="bg-slate-800/40 backdrop-blur-xl border-t border-l border-white/10 shadow-[8px_8px_24px_rgba(0,0,0,0.5),_-8px_-8px_24px_rgba(255,255,255,0.02)] rounded-2xl overflow-hidden">
+                    {/* Table Header */}
+                    <div className="grid grid-cols-5 gap-4 px-6 py-4 bg-slate-900/50 border-b border-slate-700/50 shadow-[inset_0_-2px_0_rgba(255,255,255,0.02)]">
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                            Client
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hidden md:block">
+                            Email
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                            Property
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hidden sm:block">
+                            Dispatched
+                        </div>
+                        <div className="col-span-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 text-right">
+                            Status
+                        </div>
+                    </div>
+
+                    {/* Table Body */}
+                    <div className="divide-y divide-slate-700/30">
+                        {filteredLeads.length > 0 ? (
+                            filteredLeads.map((lead) => (
+                                <div
+                                    key={lead.id}
+                                    className="grid grid-cols-5 gap-4 px-6 py-4 transition-all duration-150 hover:bg-slate-700/30 border-b border-slate-700/30 last:border-b-0"
+                                >
+                                    <div className="col-span-1 flex items-center">
+                                        <span className="text-white font-semibold tracking-tight text-sm">
+                                            {lead.client}
+                                        </span>
+                                    </div>
+                                    <div className="col-span-1 flex items-center text-zinc-400 text-sm font-mono tracking-tight hidden md:flex">
+                                        {lead.email}
+                                    </div>
+                                    <div className="col-span-1 flex items-center text-zinc-300 text-sm truncate">
+                                        {lead.property}
+                                    </div>
+                                    <div className="col-span-1 flex items-center text-zinc-500 text-xs font-medium hidden sm:flex">
+                                        {lead.dispatched}
+                                    </div>
+                                    <div className="col-span-1 flex items-center justify-end">
+                                        <StatusBadge status={lead.status} />
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-6 py-12 text-center text-zinc-500 font-medium tracking-tight">
+                                No leads match the current filters.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Table Footer with 3D inset shadow */}
+                    <div className="px-6 py-3 bg-slate-900/30 border-t border-white/5 shadow-[inset_0_8px_12px_rgba(0,0,0,0.2)] flex justify-between items-center">
+                        <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+                            {filteredLeads.length} Entries
+                        </span>
+                        <span className="text-[10px] uppercase tracking-widest text-zinc-600">
+                            Live • QORVX Core
+                        </span>
+                    </div>
+                </div>
+
+                {/* Mini 3D accent */}
+                <div className="flex justify-end mt-2">
+                    <div className="text-[10px] uppercase tracking-widest text-zinc-600/50 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)] inline-block"></span>
+                        System Operational • v3.2.1
+                    </div>
+                </div>
             </div>
         </div>
-    )
+    );
 }
