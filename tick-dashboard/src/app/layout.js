@@ -1,17 +1,17 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
 export const metadata = {
-  title: 'TICKK | Audit Console',
-  description: 'Premium Email Telemetrics & Tracking',
+  title: 'TICKK | Outbound Audit',
+  description: 'Delivery confirmations and engagement signals for your dispatched emails.',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-black text-white antialiased`}>
+      <body className={`${inter.className} bg-[#FAFAFA] text-slate-900 antialiased`}>
         {children}
       </body>
     </html>
