@@ -1,227 +1,379 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
-// --- Mock Enterprise Data with Sparkline Data ---
-const initialLedgerData = [
-    { id: 'TRX-8902', customer: 'Stark Industries', destination: 'New York, NY', date: '2026-07-08', amount: '$24,500.00', status: 'Confirmed', health: [40, 60, 45, 80, 50, 90, 100] },
-    { id: 'TRX-8903', customer: 'Wayne Enterprises', destination: 'Gotham, NJ', date: '2026-07-08', amount: '$12,240.50', status: 'Pending', health: [80, 70, 60, 40, 30, 20, 10] },
-    { id: 'TRX-8904', customer: 'Cyberdyne Systems', destination: 'San Jose, CA', date: '2026-07-07', amount: '$89,100.00', status: 'Confirmed', health: [10, 20, 40, 60, 80, 90, 95] },
-    { id: 'TRX-8905', customer: 'Tyrell Corporation', destination: 'Los Angeles, CA', date: '2026-07-07', amount: '$156,000.00', status: 'Confirmed', health: [50, 50, 55, 60, 70, 85, 90] },
-    { id: 'TRX-8906', customer: 'Massive Dynamic', destination: 'Boston, MA', date: '2026-07-06', amount: '$8,450.75', status: 'Pending', health: [90, 80, 50, 40, 60, 30, 20] },
-    { id: 'TRX-8907', customer: 'LexCorp', destination: 'Metropolis, NY', date: '2026-07-06', amount: '$43,200.00', status: 'Confirmed', health: [20, 30, 45, 50, 70, 80, 100] },
-    { id: 'TRX-8908', customer: 'Umbrella Corp', destination: 'Raccoon City, PA', date: '2026-07-05', amount: '$9,120.00', status: 'Pending', health: [100, 90, 70, 40, 20, 10, 5] },
+// ─────────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────────
+const LEDGER_DATA = [
+    { id: 'TX-8841', name: 'Elon Musk', email: 'elon.musk@x.com', status: 'Confirmed', time: '2m ago', value: '$12,400' },
+    { id: 'TX-8842', name: 'Sundar Pichai', email: 'sundar.pichai@google.com', status: 'Pending', time: '14m ago', value: '$8,200' },
+    { id: 'TX-8843', name: 'Satya Nadella', email: 'satya.nadella@microsoft.com', status: 'Confirmed', time: '32m ago', value: '$24,000' },
+    { id: 'TX-8844', name: 'Tim Cook', email: 'tim.cook@apple.com', status: 'Confirmed', time: '1h ago', value: '$15,600' },
+    { id: 'TX-8845', name: 'Jensen Huang', email: 'jensen.huang@nvidia.com', status: 'Pending', time: '2h ago', value: '$31,200' },
+    { id: 'TX-8846', name: 'Jeff Bezos', email: 'jeff.bezos@amazon.com', status: 'Bounced', time: '3h ago', value: '$5,000' },
+    { id: 'TX-8847', name: 'Mark Zuckerberg', email: 'mark.zuckerberg@meta.com', status: 'Confirmed', time: '4h ago', value: '$9,800' },
+    { id: 'TX-8848', name: 'Larry Ellison', email: 'larry.ellison@oracle.com', status: 'Pending', time: '5h ago', value: '$18,500' },
+    { id: 'TX-8849', name: 'Tim Berners-Lee', email: 'tim@w3.org', status: 'Confirmed', time: '6h ago', value: '$2,400' },
+    { id: 'TX-8850', name: 'Linus Torvalds', email: 'linus@linux.org', status: 'Confirmed', time: '7h ago', value: '$7,100' },
 ];
 
-// --- Mini SVG Sparkline Component ---
-const Sparkline = ({ data, isPositive }) => {
-    const max = Math.max(...data);
-    const points = data.map((val, i) => `${(i / (data.length - 1)) * 100},${100 - (val / max) * 100}`).join(' ');
-    const color = isPositive ? 'stroke-blue-400' : 'stroke-amber-400';
-    const fill = isPositive ? 'fill-blue-500/10' : 'fill-amber-500/10';
+const FILTER_TABS = ['All', 'Confirmed', 'Pending'];
 
-    return (
-        <svg viewBox="0 0 100 100" className="w-16 h-8 overflow-visible" preserveAspectRatio="none">
-            <polygon points={`0,100 ${points} 100,100`} className={fill} />
-            <polyline points={points} fill="none" className={`${color}`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    );
+const STATUS_CONFIG = {
+    Confirmed: { color: 'text-emerald-700', dot: 'bg-emerald-500', bg: 'bg-emerald-50' },
+    Pending: { color: 'text-amber-700', dot: 'bg-amber-400', bg: 'bg-amber-50' },
+    Bounced: { color: 'text-rose-700', dot: 'bg-rose-400', bg: 'bg-rose-50' },
 };
 
-export default function ExtremeSpatialDashboard() {
-    const [activeNavTab, setActiveNavTab] = useState('Overview');
-    const [activeFilter, setActiveFilter] = useState('All');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isMounted, setIsMounted] = useState(false);
+// ─────────────────────────────────────────────────────────────
+// HOOKS
+// ─────────────────────────────────────────────────────────────
 
-    useEffect(() => setIsMounted(true), []);
+function useCountUp(target, duration = 2000) {
+    const [val, setVal] = useState(0);
+    useEffect(() => {
+        const start = performance.now();
+        const tick = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 4);
+            setVal(Math.floor(eased * target));
+            if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [target, duration]);
+    return val;
+}
 
-    const filteredData = useMemo(() => {
-        return initialLedgerData.filter((item) => {
-            const matchesFilter = activeFilter === 'All' || item.status === activeFilter;
-            const matchesSearch = item.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.id.toLowerCase().includes(searchQuery.toLowerCase());
-            return matchesFilter && matchesSearch;
+function useLiveClock() {
+    const [time, setTime] = useState('');
+    useEffect(() => {
+        const fmt = () => setTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
+        fmt();
+        const id = setInterval(fmt, 1000);
+        return () => clearInterval(id);
+    }, []);
+    return time;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 3D TILT CARD
+// ─────────────────────────────────────────────────────────────
+function TiltCard({ children, className = '', intensity = 8 }) {
+    const ref = useRef(null);
+    const [style, setStyle] = useState({});
+
+    const handleMove = (e) => {
+        const el = ref.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+        const cx = r.width / 2;
+        const cy = r.height / 2;
+        const rx = ((y - cy) / cy) * -intensity;
+        const ry = ((x - cx) / cx) * intensity;
+        setStyle({
+            transform: `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) scale3d(1.02, 1.02, 1.02)`,
+            transition: 'transform 0.1s ease-out',
         });
-    }, [activeFilter, searchQuery]);
+    };
 
-    // Extreme 3D Utility Classes
-    const glassPanel = "bg-slate-800/40 backdrop-blur-2xl border-t border-l border-white/10";
-    const shadowExtruded = "shadow-[12px_12px_24px_rgba(0,0,0,0.5),_-8px_-8px_20px_rgba(255,255,255,0.03)]";
-    const shadowInset = "shadow-[inset_4px_4px_12px_rgba(0,0,0,0.8),_inset_-4px_-4px_12px_rgba(255,255,255,0.06)]";
-    const buttonPress = "active:translate-y-1 active:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.8),_inset_-2px_-2px_8px_rgba(255,255,255,0.05)]";
-
-    if (!isMounted) return null; // Prevent hydration mismatch
+    const handleLeave = () => {
+        setStyle({
+            transform: 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+            transition: 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
+        });
+    };
 
     return (
-        <div className="relative min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/40 overflow-hidden pb-20">
+        <div
+            ref={ref}
+            onMouseMove={handleMove}
+            onMouseLeave={handleLeave}
+            style={style}
+            className={`transform-gpu will-change-transform ${className}`}
+        >
+            {children}
+        </div>
+    );
+}
 
-            {/* Dynamic Ambient Background Lighting */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen opacity-50 animate-pulse"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-slate-700/30 rounded-full blur-[120px] pointer-events-none"></div>
+// ─────────────────────────────────────────────────────────────
+// SMOOTH SPARKLINE
+// ─────────────────────────────────────────────────────────────
+function Sparkline({ data, color = '#1a1a1a' }) {
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const w = 120;
+    const h = 40;
+    const points = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * w;
+        const y = h - ((v - min) / range) * (h - 8) - 4;
+        return `${x},${y}`;
+    }).join(' ');
 
-            {/* 1. Dynamic Island Header */}
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-2xl">
-                <div className={`relative flex items-center justify-between p-2 bg-slate-800/60 backdrop-blur-3xl border border-white/10 rounded-3xl ${shadowExtruded}`}>
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-                    {['Overview', 'Dispatches', 'Analytics', 'Settings'].map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveNavTab(tab)}
-                            className={`relative flex-1 py-2.5 rounded-2xl text-sm font-bold tracking-wide transition-all duration-300 z-10 ${buttonPress} ${activeNavTab === tab
-                                ? `bg-slate-900/90 text-blue-400 ${shadowInset} ring-1 ring-blue-500/30`
-                                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700/30 hover:shadow-[0_0_15px_rgba(37,99,235,0.15)]'
-                                }`}
-                        >
-                            {tab}
-                        </button>
-                    ))}
-                </div>
+    return (
+        <svg width={w} height={h} className="overflow-visible">
+            <polyline
+                points={points}
+                fill="none"
+                stroke={color}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.25"
+            />
+            <circle cx={w} cy={h - ((data[data.length - 1] - min) / range) * (h - 8) - 4} r="2.5" fill={color} opacity="0.6" />
+        </svg>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAIN
+// ─────────────────────────────────────────────────────────────
+export default function ZenDashboard() {
+    const [filter, setFilter] = useState('All');
+    const [search, setSearch] = useState('');
+    const [visible, setVisible] = useState(false);
+    const [hoveredRow, setHoveredRow] = useState(null);
+    const clock = useLiveClock();
+
+    useEffect(() => {
+        const t = setTimeout(() => setVisible(true), 100);
+        return () => clearTimeout(t);
+    }, []);
+
+    const filtered = useMemo(() => {
+        return LEDGER_DATA.filter((d) => {
+            const f = filter === 'All' || d.status === filter;
+            const s = !search || [d.name, d.email, d.id].some((x) => x.toLowerCase().includes(search.toLowerCase()));
+            return f && s;
+        });
+    }, [filter, search]);
+
+    const total = useCountUp(2847);
+    const conf = useCountUp(2412);
+    const pend = useCountUp(312);
+    const rate = useCountUp(94);
+
+    const metrics = [
+        { label: 'Total Dispatches', value: total.toLocaleString(), sub: '+12.4% from last week', spark: [20, 28, 22, 35, 30, 42, 38, 50, 48, 55] },
+        { label: 'Confirmed', value: conf.toLocaleString(), sub: '2,412 successful', spark: [15, 20, 18, 25, 22, 30, 28, 35, 32, 40] },
+        { label: 'Pending', value: pend.toLocaleString(), sub: 'Awaiting delivery', spark: [5, 8, 6, 10, 8, 12, 10, 15, 12, 18] },
+        { label: 'Delivery Rate', value: `${rate}%`, sub: 'Above benchmark', spark: [70, 72, 75, 78, 80, 82, 85, 88, 90, 94] },
+    ];
+
+    return (
+        <div className="min-h-screen bg-[#faf8f5] text-[#1a1a1a] font-sans selection:bg-[#1a1a1a] selection:text-[#faf8f5] overflow-x-hidden">
+            <style>{`
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(40px, -30px) scale(1.05); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+        @keyframes breathe {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        @keyframes rise {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes lineGrow {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+        .anim-rise {
+          opacity: 0;
+          animation: rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-delay-1 { animation-delay: 0.1s; }
+        .anim-delay-2 { animation-delay: 0.2s; }
+        .anim-delay-3 { animation-delay: 0.3s; }
+        .anim-delay-4 { animation-delay: 0.4s; }
+        .anim-delay-5 { animation-delay: 0.5s; }
+        .anim-delay-6 { animation-delay: 0.6s; }
+      `}</style>
+
+            {/* ─── LIVING BACKGROUND ─── */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#f5e6d3] opacity-40 blur-[120px]" style={{ animation: 'float 20s ease-in-out infinite' }} />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] rounded-full bg-[#e8ddd5] opacity-40 blur-[120px]" style={{ animation: 'float 25s ease-in-out infinite 5s' }} />
+                <div className="absolute top-[40%] left-[60%] w-[400px] h-[400px] rounded-full bg-[#d4c4b5] opacity-30 blur-[100px]" style={{ animation: 'float 18s ease-in-out infinite 10s' }} />
             </div>
 
-            <main className="relative max-w-[90rem] mx-auto px-6 pt-36 z-10">
+            <div className="relative z-10 max-w-6xl mx-auto px-8 md:px-16">
 
-                {/* Title with Glowing Accent */}
-                <div className="mb-12 flex justify-between items-end">
-                    <div>
-                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-lg mb-2">
-                            Global Network
-                        </h1>
-                        <p className="uppercase tracking-[0.3em] text-[10px] text-blue-400 font-bold flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
-                            Live Spatial Uplink
-                        </p>
+                {/* ═══════════════════════════════════════════ */}
+                {/* HEADER                                    */}
+                {/* ═══════════════════════════════════════════ */}
+                <header className={`flex items-center justify-between py-12 ${visible ? 'anim-rise' : ''}`}>
+                    <div className="flex items-center gap-4">
+                        <div className="w-8 h-[1px] bg-[#1a1a1a]" />
+                        <span className="text-[10px] font-bold tracking-[0.35em] uppercase text-[#8a8a8a]">Nexus</span>
                     </div>
-                    <div className={`hidden md:flex flex-col items-end px-6 py-3 rounded-xl ${glassPanel} ${shadowExtruded}`}>
-                        <span className="text-[10px] uppercase tracking-widest text-slate-500">System Load</span>
-                        <span className="text-xl font-mono text-slate-200">14.02%</span>
+                    <div className="flex items-center gap-6">
+                        <span className="font-mono text-[11px] text-[#8a8a8a] tracking-widest">{clock}</span>
+                        <div className="w-8 h-8 rounded-full bg-[#1a1a1a] text-[#faf8f5] flex items-center justify-center text-[10px] font-bold">AC</div>
                     </div>
-                </div>
+                </header>
 
-                {/* 2. Extreme Metrics Deck with Micro-Charts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-14">
-                    {[
-                        { label: 'Total Volume', value: '$4.2M', trend: '+12.4%', up: true, data: [10, 20, 15, 40, 35, 60, 80] },
-                        { label: 'Confirmed Routes', value: '1,932', trend: '+8.1%', up: true, data: [20, 25, 30, 45, 60, 75, 90] },
-                        { label: 'Pending Clearances', value: '421', trend: '-2.3%', up: false, data: [90, 80, 60, 40, 50, 30, 10] },
-                        { label: 'Network Integrity', value: '99.9%', trend: '+0.1%', up: true, data: [95, 96, 95, 98, 99, 99, 100] },
-                    ].map((metric, i) => (
-                        <div
-                            key={i}
-                            className={`relative group ${glassPanel} rounded-3xl p-6 transition-all duration-500 hover:-translate-y-3 hover:shadow-[0_30px_60px_rgba(0,0,0,0.7)] ${shadowExtruded} overflow-hidden`}
-                        >
-                            {/* Hover Glow Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/0 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                {/* ═══════════════════════════════════════════ */}
+                {/* HERO                                      */}
+                {/* ═══════════════════════════════════════════ */}
+                <section className={`pt-8 pb-20 ${visible ? 'anim-rise anim-delay-1' : ''}`}>
+                    <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#8a8a8a] mb-8">Overview</p>
+                    <h1 className="text-7xl md:text-[10rem] font-extralight tracking-tighter leading-[0.85] tabular-nums text-[#1a1a1a]">
+                        {total.toLocaleString()}
+                    </h1>
+                    <div className="flex items-center gap-4 mt-8">
+                        <div className="h-px flex-1 bg-[#1a1a1a] origin-left" style={{ animation: visible ? 'lineGrow 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards' : 'none', transform: 'scaleX(0)' }} />
+                        <p className="text-[11px] text-[#8a8a8a] tracking-wide font-medium">Total dispatches across all channels</p>
+                    </div>
+                </section>
 
-                            <h3 className="uppercase tracking-widest text-xs font-bold text-slate-500 mb-4">{metric.label}</h3>
-                            <div className="flex items-end justify-between z-10 relative">
-                                <div>
-                                    <span className="block text-4xl font-extrabold tracking-tighter text-white mb-2">{metric.value}</span>
-                                    <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${shadowInset} ${metric.up ? 'bg-blue-900/40 text-blue-400 ring-1 ring-blue-500/50' : 'bg-slate-900/60 text-amber-400 ring-1 ring-amber-500/50'
-                                        }`}>
-                                        {metric.trend}
-                                    </span>
+                {/* ═══════════════════════════════════════════ */}
+                {/* 3D METRICS                                */}
+                {/* ═══════════════════════════════════════════ */}
+                <section className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20 ${visible ? 'anim-rise anim-delay-2' : ''}`}>
+                    {metrics.map((m, i) => (
+                        <TiltCard key={m.label} intensity={6}>
+                            <div className="group relative bg-white/60 backdrop-blur-xl border border-white/80 rounded-3xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_40px_rgba(0,0,0,0.06)] transition-shadow duration-700 cursor-default overflow-hidden">
+                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                                    <Sparkline data={m.spark} />
                                 </div>
-                                <div className="opacity-70 group-hover:opacity-100 transition-opacity">
-                                    <Sparkline data={metric.data} isPositive={metric.up} />
-                                </div>
+                                <p className="text-[9px] font-bold tracking-[0.25em] uppercase text-[#8a8a8a] mb-6">{m.label}</p>
+                                <p className="text-4xl font-extralight tracking-tight tabular-nums mb-2">{m.value}</p>
+                                <p className="text-[11px] text-[#8a8a8a] tracking-wide">{m.sub}</p>
+                                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#1a1a1a]/10 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700" />
                             </div>
-                        </div>
+                        </TiltCard>
                     ))}
-                </div>
+                </section>
 
-                {/* 3. The Command Filter */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <div className="relative w-full md:w-[28rem] group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg className="w-5 h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
+                {/* ═══════════════════════════════════════════ */}
+                {/* DIVIDER                                   */}
+                {/* ═══════════════════════════════════════════ */}
+                <div className={`h-px bg-[#1a1a1a]/10 mb-16 ${visible ? 'anim-rise anim-delay-3' : ''}`} />
+
+                {/* ═══════════════════════════════════════════ */}
+                {/* FILTER CONSOLE                            */}
+                {/* ═══════════════════════════════════════════ */}
+                <section className={`flex flex-col sm:flex-row items-start sm:items-end justify-between gap-8 mb-12 ${visible ? 'anim-rise anim-delay-4' : ''}`}>
+                    <div className="relative w-full sm:w-96 group">
                         <input
                             type="text"
-                            placeholder="Query Database (ID, Customer)..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full bg-slate-900/80 text-slate-200 text-sm font-medium pl-12 pr-4 py-4 rounded-2xl border-t border-l border-white/5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${shadowInset} placeholder:text-slate-600 transition-all`}
+                            placeholder="Search transactions..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-transparent border-b border-[#1a1a1a]/15 py-3 pr-8 text-sm text-[#1a1a1a] placeholder:text-[#8a8a8a]/50 focus:outline-none focus:border-[#1a1a1a]/40 transition-colors duration-500"
                         />
+                        <svg className="absolute right-0 top-3 w-4 h-4 text-[#8a8a8a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        {search && (
+                            <button onClick={() => setSearch('')} className="absolute right-6 top-3 text-[9px] font-bold uppercase tracking-widest text-[#8a8a8a] hover:text-[#1a1a1a] transition-colors">
+                                Clear
+                            </button>
+                        )}
                     </div>
 
-                    <div className={`flex items-center space-x-2 p-2 bg-slate-800/60 backdrop-blur-xl rounded-2xl border-t border-l border-white/10 ${shadowExtruded}`}>
-                        {['All', 'Confirmed', 'Pending'].map((filter) => (
+                    <div className="flex items-center gap-1">
+                        {FILTER_TABS.map((f) => (
                             <button
-                                key={filter}
-                                onClick={() => setActiveFilter(filter)}
-                                className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-200 ${buttonPress} ${activeFilter === filter
-                                    ? `bg-slate-900 text-blue-400 ${shadowInset} ring-1 ring-blue-500/40`
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-500 ${filter === f
+                                        ? 'bg-[#1a1a1a] text-[#faf8f5] shadow-lg'
+                                        : 'text-[#8a8a8a] hover:text-[#1a1a1a]'
                                     }`}
                             >
-                                {filter}
+                                {f}
                             </button>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* 4. The Extruded Main Ledger */}
-                <div className={`relative p-1 rounded-3xl bg-gradient-to-b from-slate-700/50 to-slate-900/50 ${shadowExtruded}`}>
-                    <div className={`bg-slate-900/90 backdrop-blur-3xl rounded-[22px] overflow-hidden`}>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse whitespace-nowrap">
-                                <thead>
-                                    <tr className="bg-slate-800/80">
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Txn ID</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Entity</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Vector</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Timestamp</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Capital</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700">Telemetry</th>
-                                        <th className="px-8 py-5 uppercase tracking-[0.2em] text-[10px] font-black text-slate-500 border-b border-slate-700 text-center">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60">
-                                    {filteredData.length > 0 ? (
-                                        filteredData.map((row) => (
-                                            <tr key={row.id} className="group transition-all duration-300 hover:bg-blue-900/10 cursor-pointer">
-                                                <td className="px-8 py-6 text-sm font-mono font-semibold text-blue-400 group-hover:text-blue-300">{row.id}</td>
-                                                <td className="px-8 py-6 text-sm font-bold text-slate-200">{row.customer}</td>
-                                                <td className="px-8 py-6 text-sm text-slate-400 font-medium">{row.destination}</td>
-                                                <td className="px-8 py-6 text-sm font-mono text-slate-500">{row.date}</td>
-                                                <td className="px-8 py-6 text-sm font-extrabold text-white tracking-tight">{row.amount}</td>
-                                                <td className="px-8 py-6 w-32">
-                                                    <div className="opacity-50 group-hover:opacity-100 transition-opacity">
-                                                        <Sparkline data={row.health} isPositive={row.status === 'Confirmed'} />
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    <div className={`inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${row.status === 'Confirmed'
-                                                        ? `bg-blue-900/30 text-blue-400 ring-1 ring-blue-500/50 ${shadowInset}`
-                                                        : `bg-slate-800/80 text-amber-500 ring-1 ring-amber-500/30 ${shadowInset}`
-                                                        }`}>
-                                                        {row.status === 'Confirmed' && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2 animate-pulse"></span>}
-                                                        {row.status}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="7" className="px-8 py-20 text-center">
-                                                <div className="flex flex-col items-center justify-center space-y-4">
-                                                    <svg className="w-12 h-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                                    </svg>
-                                                    <span className="text-sm font-bold tracking-widest uppercase text-slate-500">Zero matches found in current spatial vector</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                {/* ═══════════════════════════════════════════ */}
+                {/* LEDGER                                    */}
+                {/* ═══════════════════════════════════════════ */}
+                <section className={`pb-24 ${visible ? 'anim-rise anim-delay-5' : ''}`}>
+                    {/* Table Header */}
+                    <div className="grid grid-cols-12 gap-4 py-4 border-b border-[#1a1a1a]/10">
+                        {['ID', 'Recipient', 'Email', 'Status', 'Time', 'Value'].map((h, i) => (
+                            <div
+                                key={h}
+                                className={`text-[9px] font-bold tracking-[0.2em] uppercase text-[#8a8a8a] ${i === 0 ? 'col-span-2' : i === 1 ? 'col-span-3' : i === 2 ? 'col-span-3 hidden md:block' : i === 3 ? 'col-span-2' : i === 4 ? 'col-span-2 text-right' : 'col-span-1 text-right hidden sm:block'}`}
+                            >
+                                {h}
+                            </div>
+                        ))}
                     </div>
-                </div>
-            </main>
+
+                    {/* Rows */}
+                    <div className="relative">
+                        {filtered.map((item, i) => {
+                            const cfg = STATUS_CONFIG[item.status];
+                            const isHovered = hoveredRow === item.id;
+                            return (
+                                <div
+                                    key={item.id}
+                                    onMouseEnter={() => setHoveredRow(item.id)}
+                                    onMouseLeave={() => setHoveredRow(null)}
+                                    className="grid grid-cols-12 gap-4 py-5 border-b border-[#1a1a1a]/5 items-center cursor-pointer transition-all duration-500 relative group"
+                                    style={{
+                                        opacity: 0,
+                                        animation: `rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.6 + i * 0.04}s forwards`,
+                                    }}
+                                >
+                                    {/* Hover background */}
+                                    <div className={`absolute inset-0 bg-[#f0ede8] rounded-xl transition-all duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+
+                                    <div className="col-span-2 relative z-10">
+                                        <span className="text-[10px] font-mono tracking-wider text-[#8a8a8a] group-hover:text-[#1a1a1a] transition-colors duration-300">
+                                            {item.id}
+                                        </span>
+                                    </div>
+                                    <div className="col-span-3 relative z-10">
+                                        <span className="text-sm font-medium tracking-tight text-[#1a1a1a]">{item.name}</span>
+                                    </div>
+                                    <div className="col-span-3 hidden md:block relative z-10">
+                                        <span className="text-[11px] font-mono text-[#8a8a8a]">{item.email}</span>
+                                    </div>
+                                    <div className="col-span-2 relative z-10 flex items-center gap-2">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${item.status === 'Pending' ? 'animate-pulse' : ''}`} />
+                                        <span className={`text-[10px] font-semibold tracking-wide ${cfg.color}`}>{item.status}</span>
+                                    </div>
+                                    <div className="col-span-2 relative z-10 text-right">
+                                        <span className="text-[10px] font-mono text-[#8a8a8a] tracking-wide">{item.time}</span>
+                                    </div>
+                                    <div className="col-span-1 relative z-10 text-right hidden sm:block">
+                                        <span className="text-[11px] font-mono font-medium tabular-nums text-[#1a1a1a]">{item.value}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {filtered.length === 0 && (
+                            <div className="py-20 text-center">
+                                <p className="text-[11px] text-[#8a8a8a] tracking-widest uppercase">No records found</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-12 text-[9px] text-[#8a8a8a] uppercase tracking-[0.2em] font-bold">
+                        <span>{filtered.length} of {LEDGER_DATA.length} records</span>
+                        <span className="flex items-center gap-2">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                            Live
+                        </span>
+                    </div>
+                </section>
+
+            </div>
         </div>
     );
 }
