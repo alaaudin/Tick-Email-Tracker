@@ -1,224 +1,133 @@
-export default function DashboardPage() {
-    const dispatches = [
-        {
-            id: 1,
-            recipient: "elon@tesla.com",
-            status: "Confirmed",
-            opens: 3,
-            clicks: 1,
-            location: "Austin, US",
-        },
-        {
-            id: 2,
-            recipient: "sundar@google.com",
-            status: "Confirmed",
-            opens: 7,
-            clicks: 2,
-            location: "Mountain View, US",
-        },
-        {
-            id: 3,
-            recipient: "satya@microsoft.com",
-            status: "Pending",
-            opens: 0,
-            clicks: 0,
-            location: "Redmond, US",
-        },
-        {
-            id: 4,
-            recipient: "tim@apple.com",
-            status: "Confirmed",
-            opens: 12,
-            clicks: 4,
-            location: "Cupertino, US",
-        },
-        {
-            id: 5,
-            recipient: "jeff@amazon.com",
-            status: "Confirmed",
-            opens: 5,
-            clicks: 0,
-            location: "Seattle, US",
-        },
-    ];
+'use client'
 
-    const activityBars = [
-        40, 65, 30, 80, 55, 90, 45, 70, 35, 85, 60, 95,
-        50, 75, 40, 88, 55, 70, 45, 92, 60, 78, 35, 85,
-    ];
+import React from 'react'
+
+export default function BrutalistDashboard() {
+    // Hardcoded Telemetry Data
+    const ledger = [
+        { id: 'TX-001', to: 'elon@tesla.com', status: 'ACKNOWLEDGED', opens: 3, loc: 'AUSTIN, TX', time: '10:42 AM' },
+        { id: 'TX-002', to: 'sundar@google.com', status: 'ACKNOWLEDGED', opens: 7, loc: 'MOUNTAIN VIEW, CA', time: '10:15 AM' },
+        { id: 'TX-003', to: 'satya@microsoft.com', status: 'PENDING', opens: 0, loc: 'REDMOND, WA', time: '09:50 AM' },
+        { id: 'TX-004', to: 'tim@apple.com', status: 'ACKNOWLEDGED', opens: 12, loc: 'CUPERTINO, CA', time: '09:11 AM' },
+        { id: 'TX-005', to: 'jeff@amazon.com', status: 'PENDING', opens: 0, loc: 'SEATTLE, WA', time: '08:45 AM' },
+    ]
+
+    // Generating a random "Barcode" for the telemetry graph
+    const barcode = Array.from({ length: 80 }).map(() => Math.floor(Math.random() * 100))
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white font-sans antialiased selection:bg-zinc-800">
-            {/* Navigation */}
-            <header className="border-b border-zinc-900/80 sticky top-0 bg-[#050505]/90 backdrop-blur-sm z-50">
-                <div className="max-w-7xl mx-auto px-8 h-14 flex items-center justify-between">
-                    <div className="text-sm font-semibold tracking-tight text-white">
-                        TICKK
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-white selection:text-black">
+            <div className="max-w-[1400px] mx-auto px-8 md:px-16 py-12">
+
+                {/* 1. MINIMALIST HEADER */}
+                <header className="flex justify-between items-baseline pb-10 border-b border-zinc-900">
+                    <div className="text-2xl font-bold tracking-tighter">TICKK<span className="text-zinc-600">_</span></div>
+                    <div className="flex gap-8 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase hidden md:flex">
+                        <span className="text-white">Telemetry</span>
+                        <span className="hover:text-white transition-colors cursor-pointer">Network</span>
+                        <span className="hover:text-white transition-colors cursor-pointer">Console</span>
+                    </div>
+                    <div className="text-[9px] font-mono tracking-widest text-emerald-500 uppercase flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                        System Live
+                    </div>
+                </header>
+
+                {/* 2. THE GOD-TIER MONOLITH METRICS */}
+                <div className="mt-24 mb-32 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-16">
+                    <div className="group cursor-default">
+                        <div className="text-[10px] font-mono tracking-[0.4em] text-zinc-500 uppercase mb-4 group-hover:text-white transition-colors duration-500">
+                            Volume_Outbound
+                        </div>
+                        {/* Massive Integer */}
+                        <div className="text-[100px] md:text-[140px] leading-none font-extralight tracking-tighter text-white">
+                            2,847
+                        </div>
                     </div>
 
-                    <nav className="flex items-center gap-8">
-                        <a
-                            href="#"
-                            className="text-xs text-zinc-500 hover:text-white transition-colors duration-200"
-                        >
-                            Overview
-                        </a>
-                        <a href="#" className="text-xs text-white">
-                            Emails
-                        </a>
-                        <a
-                            href="#"
-                            className="text-xs text-zinc-500 hover:text-white transition-colors duration-200"
-                        >
-                            Webhooks
-                        </a>
-                    </nav>
-
-                    <div className="flex items-center gap-4">
-                        <button className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors duration-200">
-                            Refresh
-                        </button>
-                        <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700" />
+                    <div className="flex flex-wrap gap-12 md:gap-24 pb-4">
+                        <div className="flex flex-col gap-2">
+                            <div className="text-[9px] font-mono tracking-[0.3em] text-zinc-600 uppercase">Confirmed</div>
+                            <div className="text-4xl md:text-5xl font-light tracking-tight text-white">2,631</div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="text-[9px] font-mono tracking-[0.3em] text-zinc-600 uppercase">Pending</div>
+                            <div className="text-4xl md:text-5xl font-light tracking-tight text-zinc-500">216</div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="text-[9px] font-mono tracking-[0.3em] text-zinc-600 uppercase">Hit Rate</div>
+                            <div className="text-4xl md:text-5xl font-light tracking-tight text-white">92.4<span className="text-2xl text-zinc-600">%</span></div>
+                        </div>
                     </div>
                 </div>
-            </header>
 
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-8 py-16 space-y-16">
-                {/* Metrics Grid */}
-                <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-                    <div>
-                        <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-3">
-                            Total Dispatches
-                        </p>
-                        <p className="text-6xl font-extralight text-zinc-100 tracking-tight">
-                            2,847
-                        </p>
+                {/* 3. THE BARCODE TELEMETRY PULSE (Completely different from Resend bars) */}
+                <div className="mb-24">
+                    <div className="text-[9px] font-mono tracking-[0.4em] text-zinc-600 uppercase mb-8 border-b border-zinc-900/50 pb-4 flex justify-between">
+                        <span>Network_Pulse_Frequency</span>
+                        <span>Last 24h</span>
                     </div>
-                    <div>
-                        <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-3">
-                            Confirmed
-                        </p>
-                        <p className="text-6xl font-extralight text-zinc-100 tracking-tight">
-                            2,631
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-3">
-                            Pending
-                        </p>
-                        <p className="text-6xl font-extralight text-zinc-100 tracking-tight">
-                            216
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-3">
-                            Delivery Rate
-                        </p>
-                        <p className="text-6xl font-extralight text-zinc-100 tracking-tight">
-                            92.4%
-                        </p>
-                    </div>
-                </section>
+                    <div className="flex items-end h-24 gap-[2px] w-full opacity-80 group hover:opacity-100 transition-opacity duration-500 cursor-crosshair">
+                        {barcode.map((val, i) => {
+                            // Creating a tech-barcode visual effect
+                            let bgClass = 'bg-zinc-900'
+                            if (val > 85) bgClass = 'bg-white'
+                            else if (val > 50) bgClass = 'bg-zinc-600'
+                            else if (val > 20) bgClass = 'bg-zinc-800'
 
-                {/* Activity Trend */}
-                <section>
-                    <div className="flex items-end gap-[3px] h-32 mb-3">
-                        {activityBars.map((height, i) => (
+                            return (
+                                <div
+                                    key={i}
+                                    className={`flex-1 ${bgClass} transition-all duration-300 hover:bg-white`}
+                                    style={{ height: `${Math.max(10, val)}%` }}
+                                ></div>
+                            )
+                        })}
+                    </div>
+                </div>
+
+                {/* 4. THE RAW LEDGER (No traditional table borders) */}
+                <div className="mt-16 w-full">
+                    <div className="flex justify-between items-center pb-6 mb-2 text-[9px] font-mono tracking-[0.3em] text-zinc-600 uppercase">
+                        <span>Ledger_Trace</span>
+                        <span className="hidden md:block">Routing_Location</span>
+                        <span>Time_Sync</span>
+                    </div>
+
+                    <div className="flex flex-col">
+                        {ledger.map((item, idx) => (
                             <div
-                                key={i}
-                                className="flex-1 bg-zinc-800 rounded-sm hover:bg-zinc-700 transition-colors duration-200"
-                                style={{ height: `${height}%` }}
-                            />
+                                key={item.id}
+                                className="group flex flex-col md:flex-row items-start md:items-center justify-between py-8 border-b border-zinc-900/40 hover:bg-zinc-900/20 transition-all duration-300 px-4 -mx-4 cursor-crosshair"
+                            >
+                                <div className="flex items-center gap-6 md:gap-12 w-full md:w-1/2 mb-4 md:mb-0">
+                                    <span className="text-[9px] font-mono text-zinc-600 w-12 hidden md:block">{(idx + 1).toString().padStart(2, '0')}</span>
+                                    <span className="text-xl md:text-2xl font-light tracking-tight text-zinc-300 group-hover:text-white group-hover:translate-x-2 transition-all duration-300">
+                                        {item.to}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between md:justify-end gap-8 md:gap-16 w-full md:w-1/2">
+                                    <span className={`text-[10px] font-mono tracking-widest ${item.status === 'ACKNOWLEDGED' ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                                        [{item.status === 'ACKNOWLEDGED' ? '+' : '-'}] {item.status}
+                                    </span>
+                                    <span className="text-[10px] font-mono tracking-widest text-zinc-600 text-right hidden md:block w-32">
+                                        {item.loc}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-zinc-500 w-16 text-right">
+                                        {item.time}
+                                    </span>
+                                </div>
+                            </div>
                         ))}
                     </div>
-                    <div className="flex justify-between text-[10px] font-mono text-zinc-600 tracking-wider">
-                        <span>00:00</span>
-                        <span>06:00</span>
-                        <span>12:00</span>
-                        <span>18:00</span>
-                        <span>23:59</span>
-                    </div>
-                </section>
 
-                {/* Utility Bar */}
-                <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="relative w-full sm:w-80">
-                        <input
-                            type="text"
-                            placeholder="Search dispatches..."
-                            className="w-full bg-zinc-900/30 border border-zinc-800 rounded-md px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-700 transition-colors duration-200"
-                        />
+                    <div className="mt-12 text-center text-[9px] font-mono tracking-[0.4em] text-zinc-700 uppercase hover:text-zinc-400 transition-colors cursor-pointer">
+                        [ Load_More_Nodes ]
                     </div>
-                    <div className="flex items-center gap-1">
-                        <button className="px-4 py-2 text-xs text-white bg-zinc-800 rounded-md hover:bg-zinc-700 transition-colors duration-200">
-                            All
-                        </button>
-                        <button className="px-4 py-2 text-xs text-zinc-500 hover:text-white transition-colors duration-200">
-                            Confirmed
-                        </button>
-                        <button className="px-4 py-2 text-xs text-zinc-500 hover:text-white transition-colors duration-200">
-                            Pending
-                        </button>
-                    </div>
-                </section>
+                </div>
 
-                {/* Ledger Table */}
-                <section className="overflow-x-auto">
-                    <table className="w-full min-w-[640px]">
-                        <thead>
-                            <tr className="text-left">
-                                <th className="text-[10px] font-mono uppercase text-zinc-600 pb-4 tracking-wider">
-                                    Recipient
-                                </th>
-                                <th className="text-[10px] font-mono uppercase text-zinc-600 pb-4 tracking-wider">
-                                    Status
-                                </th>
-                                <th className="text-[10px] font-mono uppercase text-zinc-600 pb-4 tracking-wider">
-                                    Opens
-                                </th>
-                                <th className="text-[10px] font-mono uppercase text-zinc-600 pb-4 tracking-wider">
-                                    Clicks
-                                </th>
-                                <th className="text-[10px] font-mono uppercase text-zinc-600 pb-4 tracking-wider text-right">
-                                    Location
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {dispatches.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className="border-b border-zinc-900/50 group hover:bg-zinc-900/20 transition-colors duration-200"
-                                >
-                                    <td className="py-7 text-sm text-zinc-300 group-hover:text-white transition-colors duration-200">
-                                        {item.recipient}
-                                    </td>
-                                    <td className="py-7">
-                                        <span
-                                            className={`text-xs ${item.status === "Confirmed"
-                                                ? "text-zinc-400"
-                                                : "text-zinc-500"
-                                                }`}
-                                        >
-                                            {item.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-7 text-sm text-zinc-500 font-mono">
-                                        {item.opens}
-                                    </td>
-                                    <td className="py-7 text-sm text-zinc-500 font-mono">
-                                        {item.clicks}
-                                    </td>
-                                    <td className="py-7 text-sm text-zinc-500 text-right">
-                                        {item.location}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </section>
-            </main>
+            </div>
         </div>
-    );
+    )
 }
